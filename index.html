@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEG Matrix Dashboard — Battery Lifecycle Management</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  /* ── Tokens ── */
+  :root {
+    --bg:        #0d0f12;
+    --surface:   #151820;
+    --surface2:  #1c2030;
+    --border:    rgba(255,255,255,0.07);
+    --border2:   rgba(255,255,255,0.13);
+    --text:      #e8eaf0;
+    --muted:     #7a8099;
+    --dim:       #4a5068;
+
+    --teal:      #1fcf94;
+    --teal-dim:  rgba(31,207,148,0.12);
+    --blue:      #4f9cf9;
+    --blue-dim:  rgba(79,156,249,0.1);
+    --coral:     #f06b45;
+    --coral-dim: rgba(240,107,69,0.1);
+    --purple:    #9b7ff4;
+    --amber:     #f5a623;
+
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --font-sans: 'DM Sans', 'Outfit', system-ui, sans-serif;
+    --r:         8px;
+    --r-lg:      12px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* ── Google Fonts ── */
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  /* ── Layout ── */
+  .shell {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 28px 20px 48px;
+  }
+
+  header {
+    margin-bottom: 28px;
+    border-bottom: 0.5px solid var(--border2);
+    padding-bottom: 20px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .header-left h1 {
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.3px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .header-left p {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+  .badge {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 0.5px solid var(--border2);
+    color: var(--muted);
+  }
+
+  /* ── Metric strip ── */
+  .metric-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 600px) { .metric-strip { grid-template-columns: repeat(2, 1fr); } }
+
+  .metric-card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r);
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    border-radius: var(--r) var(--r) 0 0;
+  }
+  .mc-eeg::before  { background: var(--blue); }
+  .mc-iei::before  { background: var(--coral); }
+  .mc-neg::before  { background: var(--teal); }
+  .mc-zone::before { background: var(--purple); }
+
+  .metric-card .label {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+  .metric-card .value {
+    font-size: 26px;
+    font-weight: 500;
+    font-family: var(--font-mono);
+    line-height: 1;
+  }
+  .metric-card .sub {
+    font-size: 10px;
+    color: var(--dim);
+    margin-top: 4px;
+    font-family: var(--font-mono);
+  }
+
+  /* ── Main grid ── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  @media (max-width: 768px) { .main-grid { grid-template-columns: 1fr; } }
+
+  /* ── Panel ── */
+  .panel {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 16px;
+  }
+  .panel + .panel { margin-top: 12px; }
+  .panel-title {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--dim);
+    margin-bottom: 14px;
+  }
+
+  /* ── Sliders ── */
+  .slider-group { margin-bottom: 10px; }
+  .slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .slider-header .sname {
+    font-size: 12px;
+    font-family: var(--font-mono);
+    color: var(--muted);
+  }
+  .slider-header .sval {
+    font-size: 12px;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--surface2);
+    outline: none;
+    cursor: pointer;
+    border: 0.5px solid var(--border);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--text);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+    transition: background 0.15s;
+  }
+  input[type=range]:hover::-webkit-slider-thumb { background: var(--teal); }
+  input[type=range]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--text);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+  }
+
+  .divider {
+    border: none;
+    border-top: 0.5px solid var(--border);
+    margin: 12px 0;
+  }
+
+  /* ── Charts panel ── */
+  .charts-col { display: flex; flex-direction: column; gap: 12px; }
+
+  .chart-wrap {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 16px;
+  }
+  .chart-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .chart-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .chart-sub {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--dim);
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 10px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--muted);
+  }
+  .legend-line {
+    width: 18px;
+    height: 2px;
+    border-radius: 1px;
+  }
+  .legend-dash {
+    width: 18px;
+    height: 2px;
+    background: repeating-linear-gradient(90deg, var(--dim) 0, var(--dim) 4px, transparent 4px, transparent 8px);
+  }
+
+  canvas { display: block; }
+
+  /* ── Zone pill ── */
+  .zone-a { color: var(--coral); }
+  .zone-b { color: var(--amber); }
+  .zone-c { color: var(--teal); }
+  .neg-pos { color: var(--teal); }
+  .neg-neg { color: var(--coral); }
+
+  /* ── Equation bar ── */
+  .eq-bar {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--r);
+    padding: 10px 16px;
+    margin-bottom: 20px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .eq-bar span { color: var(--text); }
+  .eq-bar .eq-sep { color: var(--dim); }
+
+  /* ── Threshold annotation ── */
+  .threshold-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--dim);
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header>
+    <div class="header-left">
+      <h1>NEG Matrix Dashboard</h1>
+      <p>Singh, Verma &amp; Kumar (2026) · Decision Sciences · DOI: 10.1111/deci.70029</p>
+    </div>
+    <span class="badge">Battery Lifecycle Management</span>
+  </header>
+
+  <div class="eq-bar">
+    <span>EEG = g · ρ · β · d₂</span>
+    <span class="eq-sep">|</span>
+    <span>IEI = l · ½ · βρ · [d₁²(b₁−βρ)/b₁ + (d₁−d₂)²(b₂−βρ)/b₂]</span>
+    <span class="eq-sep">|</span>
+    <span>NEG = EEG − IEI</span>
+  </div>
+
+  <div class="metric-strip">
+    <div class="metric-card mc-eeg">
+      <div class="label">EEG</div>
+      <div class="value" id="m-eeg" style="color:var(--blue)">—</div>
+      <div class="sub">end-of-life env. gain</div>
+    </div>
+    <div class="metric-card mc-iei">
+      <div class="label">IEI</div>
+      <div class="value" id="m-iei" style="color:var(--coral)">—</div>
+      <div class="sub">in-life env. impact</div>
+    </div>
+    <div class="metric-card mc-neg">
+      <div class="label">NEG</div>
+      <div class="value" id="m-neg">—</div>
+      <div class="sub">net environmental gain</div>
+    </div>
+    <div class="metric-card mc-zone">
+      <div class="label">IEI Zone (Lemma 1)</div>
+      <div class="value" id="m-zone" style="font-size:18px">—</div>
+      <div class="sub" id="m-zone-sub">ρ̂ = —</div>
+    </div>
+  </div>
+
+  <div class="main-grid">
+
+    <!-- LEFT: sliders -->
+    <div>
+      <div class="panel">
+        <div class="panel-title">Sweep parameters</div>
+        <div class="slider-group">
+          <div class="slider-header">
+            <span class="sname">ρ &nbsp;(BMS effort)</span>
+            <span class="sval" id="v-rho">1.00</span>
+          </div>
+          <input type="range" id="sl-rho" min="0.01" max="5" step="0.01" value="1">
+        </div>
+        <div class="slider-group">
+          <div class="slider-header">
+            <span class="sname">β &nbsp;(effectiveness)</span>
+            <span class="sval" id="v-beta">1.00</span>
+          </div>
+          <input type="range" id="sl-beta" min="0.1" max="5" step="0.05" value="1">
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Fixed parameters</div>
+
+        <div class="slider-group">
+          <div class="slider-header">
+            <span class="sname">g &nbsp;(EEG factor)</span>
+            <span class="sval" id="v-g">1000</span>
+          </div>
+          <input type="range" id="sl-g" min="100" max="3000" step="50" value="1000">
+        </div>
+        <div class="slider-group">
+          <div class="slider-header">
+            <span class="sname">l &nbsp;(IEI factor)</span>
+            <span class="sval" id="v-l">500</span>
+          </div>
+          <input type="range" id="sl-l" min="50" max="2000" step="50" value="500">
+        </div>
+
+        <hr class="divider">
+
+        <div class="slider-group">
+          <div class="slider-header">
+            <span class="sname">d₁ &nbsp;(1st-life BDL)</span>
+            <span class="sval" id="v-d1">0.20</span>
+          </div>
+          <input type="range" id="sl-d1" min="0.05" max="0.35" step="0.01" value="0.2">
+        </div>
+        <div class="slider-group">
+          <div class="slider-header">
+            <span class="sname">d₂ &nbsp;(2nd-life BDL)</span>
+            <span class="sval" id="v-d2">0.70</span>
+          </div>
+          <input type="range" id="sl-d2" min="0.4" max="0.8" step="0.01" value="0.7">
+        </div>
+
+        <hr class="divider">
+
+        <div class="slider-group">
+          <div class="slider-header">
+            <span class="sname">b₁ &nbsp;(1st-life detn.)</span>
+            <span class="sval" id="v-b1">8.0</span>
+          </div>
+          <input type="range" id="sl-b1" min="2" max="20" step="0.5" value="8">
+        </div>
+        <div class="slider-group">
+          <div class="slider-header">
+            <span class="sname">b₂ &nbsp;(2nd-life detn.)</span>
+            <span class="sval" id="v-b2">4.0</span>
+          </div>
+          <input type="range" id="sl-b2" min="1" max="10" step="0.5" value="4">
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: charts -->
+    <div class="charts-col">
+
+      <div class="chart-wrap">
+        <div class="chart-header">
+          <span class="chart-title">NEG, EEG &amp; IEI vs ρ</span>
+          <span class="chart-sub">β fixed at slider value · vertical line = ρ̂</span>
+        </div>
+        <div style="position:relative;height:220px">
+          <canvas id="chart-rho" role="img" aria-label="Line chart of NEG, EEG and IEI versus BMS effort rho">NEG, EEG and IEI values plotted against BMS effort parameter rho from 0 to 5.</canvas>
+        </div>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-line" style="background:var(--teal)"></span>NEG</span>
+          <span class="legend-item"><span class="legend-line" style="background:var(--blue)"></span>EEG</span>
+          <span class="legend-item"><span class="legend-line" style="background:var(--coral)"></span>IEI</span>
+          <span class="legend-item"><span class="legend-dash"></span>ρ̂ threshold</span>
+        </div>
+        <div class="threshold-row" id="rho-hat-row">ρ̂ = —</div>
+      </div>
+
+      <div class="chart-wrap">
+        <div class="chart-header">
+          <span class="chart-title">NEG, EEG &amp; IEI vs β</span>
+          <span class="chart-sub">ρ fixed at slider value</span>
+        </div>
+        <div style="position:relative;height:200px">
+          <canvas id="chart-beta" role="img" aria-label="Line chart of NEG, EEG and IEI versus effectiveness beta">NEG, EEG and IEI values plotted against BMS effectiveness parameter beta from 0.1 to 5.</canvas>
+        </div>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-line" style="background:var(--teal)"></span>NEG</span>
+          <span class="legend-item"><span class="legend-line" style="background:var(--purple)"></span>EEG</span>
+          <span class="legend-item"><span class="legend-line" style="background:var(--coral)"></span>IEI</span>
+        </div>
+      </div>
+
+      <div class="chart-wrap">
+        <div class="chart-header">
+          <span class="chart-title">NEG surface — ρ × β heatmap</span>
+          <span class="chart-sub">green = positive NEG · red = negative NEG</span>
+        </div>
+        <div style="position:relative;height:180px">
+          <canvas id="chart-heat" role="img" aria-label="Heatmap of NEG across rho and beta parameter space">Heatmap showing net environmental gain across combinations of rho and beta.</canvas>
+        </div>
+        <div class="legend">
+          <span class="legend-item" style="gap:3px">
+            <span style="display:inline-block;width:80px;height:8px;border-radius:2px;background:linear-gradient(to right,#f06b45,#1c2030,#1fcf94)"></span>
+            <span>negative NEG → zero → positive NEG</span>
+          </span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ── Math ── */
+function calcEEG(rho, beta, g, d2) {
+  return g * rho * beta * d2;
+}
+function calcIEI(rho, beta, l, d1, d2, b1, b2) {
+  var br = beta * rho;
+  var t1 = d1 * d1 * (b1 - br) / b1;
+  var t2 = (d1 - d2) * (d1 - d2) * (b2 - br) / b2;
+  return l * 0.5 * beta * rho * (t1 + t2);
+}
+function calcNEG(rho, beta, p) {
+  return calcEEG(rho, beta, p.g, p.d2) - calcIEI(rho, beta, p.l, p.d1, p.d2, p.b1, p.b2);
+}
+function calcRhoHat(p) {
+  var num = p.b1 * p.b2 * (2 * p.d1 * p.d1 - 2 * p.d1 * p.d2 + p.d2 * p.d2);
+  var den = p.beta * (p.b1 * (p.d1 - p.d2) * (p.d1 - p.d2) + p.b2 * p.d1 * p.d1);
+  return den > 0 ? num / den : null;
+}
+function zoneOf(rho, rhoHat) {
+  if (rhoHat == null) return { label: 'N/A', cls: '' };
+  if (rho <= rhoHat / 2) return { label: 'Zone A', cls: 'zone-a', desc: 'IEI↑ with ρ' };
+  if (rho <= rhoHat)     return { label: 'Zone B', cls: 'zone-b', desc: 'IEI↓ with ρ, IEI>0' };
+  return                        { label: 'Zone C', cls: 'zone-c', desc: 'IEI<0, IEI↓ with ρ' };
+}
+
+/* ── Params ── */
+function getP() {
+  return {
+    rho:  +document.getElementById('sl-rho').value,
+    beta: +document.getElementById('sl-beta').value,
+    g:    +document.getElementById('sl-g').value,
+    l:    +document.getElementById('sl-l').value,
+    d1:   +document.getElementById('sl-d1').value,
+    d2:   +document.getElementById('sl-d2').value,
+    b1:   +document.getElementById('sl-b1').value,
+    b2:   +document.getElementById('sl-b2').value
+  };
+}
+
+/* ── linspace ── */
+function linspace(a, b, n) {
+  var arr = [], step = (b - a) / (n - 1);
+  for (var i = 0; i < n; i++) arr.push(+(a + step * i).toFixed(4));
+  return arr;
+}
+
+/* ── Heatmap helpers ── */
+function negToColor(val, vmin, vmax) {
+  if (val >= 0) {
+    var t = Math.min(val / (vmax || 1), 1);
+    var r = Math.round(28 + (31 - 28) * t);
+    var g = Math.round(32 + (207 - 32) * t);
+    var b = Math.round(48 + (148 - 48) * t);
+    return [r, g, b];
+  } else {
+    var t2 = Math.min(Math.abs(val) / (Math.abs(vmin) || 1), 1);
+    var r2 = Math.round(28 + (240 - 28) * t2);
+    var g2 = Math.round(32 + (107 - 32) * t2);
+    var b2 = Math.round(48 + (69 - 48) * t2);
+    return [r2, g2, b2];
+  }
+}
+
+/* ── Charts init ── */
+var N = 80, HN = 40;
+var rhoChart, betaChart, heatChart;
+
+var CHART_DEFAULTS = {
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: { duration: 120 },
+  plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+  scales: {
+    x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#4a5068', font: { family: "'JetBrains Mono',monospace", size: 10 }, maxTicksLimit: 8 } },
+    y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#4a5068', font: { family: "'JetBrains Mono',monospace", size: 10 }, callback: v => v.toFixed(0) } }
+  }
+};
+
+function buildDataRho(p) {
+  var rhos = linspace(0.01, 5, N);
+  return {
+    labels: rhos,
+    eeg: rhos.map(r => calcEEG(r, p.beta, p.g, p.d2)),
+    iei: rhos.map(r => calcIEI(r, p.beta, p.l, p.d1, p.d2, p.b1, p.b2)),
+    neg: rhos.map(r => calcNEG(r, p.beta, p))
+  };
+}
+function buildDataBeta(p) {
+  var betas = linspace(0.1, 5, N);
+  return {
+    labels: betas,
+    eeg: betas.map(b => calcEEG(p.rho, b, p.g, p.d2)),
+    iei: betas.map(b => calcIEI(p.rho, b, p.l, p.d1, p.d2, p.b1, p.b2)),
+    neg: betas.map(b => calcNEG(p.rho, b, p))
+  };
+}
+
+function initCharts() {
+  var p = getP();
+  var dr = buildDataRho(p);
+  var db = buildDataBeta(p);
+
+  rhoChart = new Chart(document.getElementById('chart-rho'), {
+    type: 'line',
+    data: {
+      labels: dr.labels.map(v => v.toFixed(2)),
+      datasets: [
+        { label: 'NEG', data: dr.neg, borderColor: '#1fcf94', borderWidth: 2, pointRadius: 0, tension: 0.35, backgroundColor: 'rgba(31,207,148,0.06)', fill: true },
+        { label: 'EEG', data: dr.eeg, borderColor: '#4f9cf9', borderWidth: 1.5, pointRadius: 0, tension: 0.35, borderDash: [6, 3] },
+        { label: 'IEI', data: dr.iei, borderColor: '#f06b45', borderWidth: 1.5, pointRadius: 0, tension: 0.35, borderDash: [3, 3] }
+      ]
+    },
+    options: Object.assign({}, CHART_DEFAULTS, {
+      scales: Object.assign({}, CHART_DEFAULTS.scales, {
+        x: Object.assign({}, CHART_DEFAULTS.scales.x, { title: { display: true, text: 'ρ (BMS effort)', color: '#4a5068', font: { size: 10, family: "'JetBrains Mono',monospace" } } }),
+        y: Object.assign({}, CHART_DEFAULTS.scales.y, { title: { display: true, text: 'Value', color: '#4a5068', font: { size: 10, family: "'JetBrains Mono',monospace" } } })
+      })
+    })
+  });
+
+  betaChart = new Chart(document.getElementById('chart-beta'), {
+    type: 'line',
+    data: {
+      labels: db.labels.map(v => v.toFixed(2)),
+      datasets: [
+        { label: 'NEG', data: db.neg, borderColor: '#1fcf94', borderWidth: 2, pointRadius: 0, tension: 0.35, backgroundColor: 'rgba(31,207,148,0.06)', fill: true },
+        { label: 'EEG', data: db.eeg, borderColor: '#9b7ff4', borderWidth: 1.5, pointRadius: 0, tension: 0.35, borderDash: [6, 3] },
+        { label: 'IEI', data: db.iei, borderColor: '#f06b45', borderWidth: 1.5, pointRadius: 0, tension: 0.35, borderDash: [3, 3] }
+      ]
+    },
+    options: Object.assign({}, CHART_DEFAULTS, {
+      scales: Object.assign({}, CHART_DEFAULTS.scales, {
+        x: Object.assign({}, CHART_DEFAULTS.scales.x, { title: { display: true, text: 'β (effectiveness)', color: '#4a5068', font: { size: 10, family: "'JetBrains Mono',monospace" } } }),
+        y: Object.assign({}, CHART_DEFAULTS.scales.y)
+      })
+    })
+  });
+
+  initHeatmap(p);
+  updateMetrics(p);
+}
+
+/* ── Heatmap (raw canvas) ── */
+function initHeatmap(p) {
+  var canvas = document.getElementById('chart-heat');
+  drawHeatmap(canvas, p);
+}
+
+function drawHeatmap(canvas, p) {
+  var ctx = canvas.getContext('2d');
+  var W = canvas.parentElement.clientWidth - 32;
+  var H = 180;
+  canvas.width = W; canvas.height = H;
+  var rhos  = linspace(0.01, 5, HN);
+  var betas = linspace(0.1, 5, HN);
+  var cw = W / HN, ch = H / HN;
+
+  /* compute range */
+  var vals = [];
+  for (var bi = 0; bi < HN; bi++) {
+    for (var ri = 0; ri < HN; ri++) {
+      vals.push(calcNEG(rhos[ri], betas[bi], p));
+    }
+  }
+  var vmax = Math.max(...vals.filter(v => v >= 0), 1);
+  var vmin = Math.min(...vals.filter(v => v < 0), -1);
+
+  for (var bi2 = 0; bi2 < HN; bi2++) {
+    for (var ri2 = 0; ri2 < HN; ri2++) {
+      var neg = calcNEG(rhos[ri2], betas[bi2], p);
+      var col = negToColor(neg, vmin, vmax);
+      ctx.fillStyle = 'rgb(' + col[0] + ',' + col[1] + ',' + col[2] + ')';
+      ctx.fillRect(ri2 * cw, (HN - 1 - bi2) * ch, Math.ceil(cw) + 1, Math.ceil(ch) + 1);
+    }
+  }
+
+  /* axes labels */
+  ctx.fillStyle = '#4a5068';
+  ctx.font = '10px "JetBrains Mono",monospace';
+  ctx.fillText('ρ →', W - 30, H - 4);
+  ctx.save(); ctx.translate(12, H / 2); ctx.rotate(-Math.PI / 2);
+  ctx.fillText('β →', 0, 0); ctx.restore();
+
+  /* current ρ, β crosshair */
+  var rx = ((p.rho - 0.01) / (5 - 0.01)) * W;
+  var by = H - ((p.beta - 0.1) / (5 - 0.1)) * H;
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath(); ctx.moveTo(rx, 0); ctx.lineTo(rx, H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, by); ctx.lineTo(W, by); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(rx, by, 4, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffffff'; ctx.fill();
+}
+
+/* ── Update ── */
+function updateAll() {
+  var p = getP();
+  var dr = buildDataRho(p);
+  var db = buildDataBeta(p);
+
+  rhoChart.data.datasets[0].data = dr.neg;
+  rhoChart.data.datasets[1].data = dr.eeg;
+  rhoChart.data.datasets[2].data = dr.iei;
+  rhoChart.update('none');
+
+  betaChart.data.datasets[0].data = db.neg;
+  betaChart.data.datasets[1].data = db.eeg;
+  betaChart.data.datasets[2].data = db.iei;
+  betaChart.update('none');
+
+  drawHeatmap(document.getElementById('chart-heat'), p);
+  updateMetrics(p);
+}
+
+function updateMetrics(p) {
+  var eeg = calcEEG(p.rho, p.beta, p.g, p.d2);
+  var iei = calcIEI(p.rho, p.beta, p.l, p.d1, p.d2, p.b1, p.b2);
+  var neg = eeg - iei;
+  var rhoHat = calcRhoHat(p);
+  var z = zoneOf(p.rho, rhoHat);
+
+  document.getElementById('m-eeg').textContent = eeg.toFixed(1);
+  document.getElementById('m-iei').textContent = iei.toFixed(1);
+  var negEl = document.getElementById('m-neg');
+  negEl.textContent = neg.toFixed(1);
+  negEl.className = 'value ' + (neg >= 0 ? 'neg-pos' : 'neg-neg');
+  var zoneEl = document.getElementById('m-zone');
+  zoneEl.textContent = z.label;
+  zoneEl.className = 'value ' + z.cls;
+  document.getElementById('m-zone-sub').textContent = z.desc || '';
+
+  var rhoHatStr = rhoHat != null ? rhoHat.toFixed(3) : 'N/A';
+  document.getElementById('rho-hat-row').textContent = 'ρ̂ = ' + rhoHatStr + '  (Zone A↔B boundary)';
+  document.getElementById('m-zone-sub').textContent = 'ρ̂ = ' + rhoHatStr;
+}
+
+/* ── Bind sliders ── */
+function bindSlider(id, display, decimals) {
+  var el = document.getElementById('sl-' + id);
+  var out = document.getElementById('v-' + id);
+  el.addEventListener('input', function () {
+    out.textContent = parseFloat(el.value).toFixed(decimals);
+    updateAll();
+  });
+}
+
+window.addEventListener('load', function () {
+  initCharts();
+  ['rho','beta','g','l','d1','d2','b1','b2'].forEach(function(id) {
+    var dec = {'rho':2,'beta':2,'g':0,'l':0,'d1':2,'d2':2,'b1':1,'b2':1}[id];
+    bindSlider(id, id, dec);
+  });
+  window.addEventListener('resize', function() {
+    var p = getP();
+    drawHeatmap(document.getElementById('chart-heat'), p);
+  });
+});
+</script>
+</body>
+</html>
