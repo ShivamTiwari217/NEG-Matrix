@@ -6,450 +6,270 @@
 <title>NEG Matrix Dashboard — Battery Lifecycle Management</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-  /* ── Tokens ── */
-  :root {
-    --bg:        #0d0f12;
-    --surface:   #151820;
-    --surface2:  #1c2030;
-    --border:    rgba(255,255,255,0.07);
-    --border2:   rgba(255,255,255,0.13);
-    --text:      #e8eaf0;
-    --muted:     #7a8099;
-    --dim:       #4a5068;
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0f12;--surface:#151820;--surface2:#1c2030;--surface3:#222638;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#e8eaf0;--muted:#7a8099;--dim:#4a5068;
+  --teal:#1fcf94;--teal-dim:rgba(31,207,148,0.12);
+  --blue:#4f9cf9;--coral:#f06b45;--purple:#9b7ff4;--amber:#f5a623;
+  --font-mono:'JetBrains Mono','Fira Code',monospace;
+  --font-sans:'DM Sans',system-ui,sans-serif;
+  --r:8px;--r-lg:12px;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font-sans);font-size:14px;line-height:1.5;min-height:100vh}
+.shell{max-width:1200px;margin:0 auto;padding:24px 20px 48px}
 
-    --teal:      #1fcf94;
-    --teal-dim:  rgba(31,207,148,0.12);
-    --blue:      #4f9cf9;
-    --blue-dim:  rgba(79,156,249,0.1);
-    --coral:     #f06b45;
-    --coral-dim: rgba(240,107,69,0.1);
-    --purple:    #9b7ff4;
-    --amber:     #f5a623;
+/* Header */
+header{margin-bottom:20px;border-bottom:.5px solid var(--border2);padding-bottom:16px;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.header-left h1{font-size:20px;font-weight:500;letter-spacing:-.3px;margin-bottom:3px}
+.header-left p{font-size:11px;color:var(--muted);font-family:var(--font-mono)}
+.badge{font-family:var(--font-mono);font-size:11px;padding:4px 10px;border-radius:4px;border:.5px solid var(--border2);color:var(--muted)}
 
-    --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-    --font-sans: 'DM Sans', 'Outfit', system-ui, sans-serif;
-    --r:         8px;
-    --r-lg:      12px;
-  }
+/* Equation bar */
+.eq-bar{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:9px 16px;margin-bottom:16px;font-family:var(--font-mono);font-size:11px;color:var(--muted);display:flex;gap:20px;flex-wrap:wrap;align-items:center}
+.eq-bar span{color:var(--text)}.eq-bar .sep{color:var(--dim)}
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* Region selector */
+.region-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
+.region-btn{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:10px 8px;cursor:pointer;transition:all .15s;text-align:center}
+.region-btn:hover{border-color:var(--border2);background:var(--surface2)}
+.region-btn.active{border-color:var(--teal);background:rgba(31,207,148,0.07)}
+.region-btn .flag{font-size:22px;display:block;margin-bottom:4px}
+.region-btn .rname{font-size:11px;font-weight:500;color:var(--text)}
+.region-btn .rstatus{font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-top:2px}
+.region-btn.active .rname{color:var(--teal)}
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font-sans);
-    font-size: 14px;
-    line-height: 1.5;
-    min-height: 100vh;
-  }
+/* Region context card */
+.region-context{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px}
+@media(max-width:700px){.region-context{grid-template-columns:1fr 1fr}}
+.ctx-item .ctx-label{font-size:10px;font-family:var(--font-mono);color:var(--dim);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px}
+.ctx-item .ctx-val{font-size:14px;font-weight:500;font-family:var(--font-mono)}
+.ctx-item .ctx-sub{font-size:10px;color:var(--muted);margin-top:2px}
 
-  /* ── Google Fonts ── */
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
+/* Metric strip */
+.metric-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+@media(max-width:600px){.metric-strip{grid-template-columns:repeat(2,1fr)}}
+.metric-card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:12px 14px;position:relative;overflow:hidden}
+.metric-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:var(--r) var(--r) 0 0}
+.mc-eeg::before{background:var(--blue)}.mc-iei::before{background:var(--coral)}.mc-neg::before{background:var(--teal)}.mc-zone::before{background:var(--purple)}
+.metric-card .label{font-size:10px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
+.metric-card .value{font-size:22px;font-weight:500;font-family:var(--font-mono);line-height:1}
+.metric-card .sub{font-size:10px;color:var(--dim);margin-top:3px;font-family:var(--font-mono)}
 
-  /* ── Layout ── */
-  .shell {
-    max-width: 1160px;
-    margin: 0 auto;
-    padding: 28px 20px 48px;
-  }
+/* Main grid */
+.main-grid{display:grid;grid-template-columns:228px 1fr;gap:12px;align-items:start}
+@media(max-width:768px){.main-grid{grid-template-columns:1fr}}
 
-  header {
-    margin-bottom: 28px;
-    border-bottom: 0.5px solid var(--border2);
-    padding-bottom: 20px;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-  .header-left h1 {
-    font-size: 22px;
-    font-weight: 500;
-    letter-spacing: -0.3px;
-    color: var(--text);
-    margin-bottom: 4px;
-  }
-  .header-left p {
-    font-size: 12px;
-    color: var(--muted);
-    font-family: var(--font-mono);
-  }
-  .badge {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    padding: 4px 10px;
-    border-radius: 4px;
-    border: 0.5px solid var(--border2);
-    color: var(--muted);
-  }
+/* Panel */
+.panel{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r-lg);padding:14px}
+.panel+.panel{margin-top:10px}
+.panel-title{font-size:10px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin-bottom:12px}
 
-  /* ── Metric strip ── */
-  .metric-strip {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-    margin-bottom: 20px;
-  }
-  @media (max-width: 600px) { .metric-strip { grid-template-columns: repeat(2, 1fr); } }
+/* Sliders */
+.slider-group{margin-bottom:9px}
+.slider-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.slider-header .sname{font-size:11px;font-family:var(--font-mono);color:var(--muted)}
+.slider-header .sval{font-size:11px;font-family:var(--font-mono);font-weight:500;color:var(--text)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:var(--surface2);outline:none;cursor:pointer;border:.5px solid var(--border)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--text);cursor:pointer;border:2px solid var(--bg);transition:background .15s}
+input[type=range]:hover::-webkit-slider-thumb{background:var(--teal)}
+.divider{border:none;border-top:.5px solid var(--border);margin:10px 0}
 
-  .metric-card {
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    border-radius: var(--r);
-    padding: 14px 16px;
-    position: relative;
-    overflow: hidden;
-  }
-  .metric-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    border-radius: var(--r) var(--r) 0 0;
-  }
-  .mc-eeg::before  { background: var(--blue); }
-  .mc-iei::before  { background: var(--coral); }
-  .mc-neg::before  { background: var(--teal); }
-  .mc-zone::before { background: var(--purple); }
+/* Charts */
+.charts-col{display:flex;flex-direction:column;gap:10px}
+.chart-wrap{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r-lg);padding:14px}
+.chart-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap}
+.chart-title{font-size:12px;font-weight:500;color:var(--text)}
+.chart-sub{font-size:10px;font-family:var(--font-mono);color:var(--dim)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:10px;font-family:var(--font-mono);color:var(--muted)}
+.legend-line{width:16px;height:2px;border-radius:1px}
+.legend-dash{width:16px;height:2px;background:repeating-linear-gradient(90deg,var(--dim) 0,var(--dim) 4px,transparent 4px,transparent 8px)}
+canvas{display:block}
 
-  .metric-card .label {
-    font-size: 10px;
-    font-family: var(--font-mono);
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 6px;
-  }
-  .metric-card .value {
-    font-size: 26px;
-    font-weight: 500;
-    font-family: var(--font-mono);
-    line-height: 1;
-  }
-  .metric-card .sub {
-    font-size: 10px;
-    color: var(--dim);
-    margin-top: 4px;
-    font-family: var(--font-mono);
-  }
+/* Region override notice */
+.override-notice{font-size:10px;font-family:var(--font-mono);color:var(--amber);margin-top:4px;display:none}
+.override-notice.show{display:block}
 
-  /* ── Main grid ── */
-  .main-grid {
-    display: grid;
-    grid-template-columns: 240px 1fr;
-    gap: 14px;
-    align-items: start;
-  }
-  @media (max-width: 768px) { .main-grid { grid-template-columns: 1fr; } }
-
-  /* ── Panel ── */
-  .panel {
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    border-radius: var(--r-lg);
-    padding: 16px;
-  }
-  .panel + .panel { margin-top: 12px; }
-  .panel-title {
-    font-size: 10px;
-    font-family: var(--font-mono);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--dim);
-    margin-bottom: 14px;
-  }
-
-  /* ── Sliders ── */
-  .slider-group { margin-bottom: 10px; }
-  .slider-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 4px;
-  }
-  .slider-header .sname {
-    font-size: 12px;
-    font-family: var(--font-mono);
-    color: var(--muted);
-  }
-  .slider-header .sval {
-    font-size: 12px;
-    font-family: var(--font-mono);
-    font-weight: 500;
-    color: var(--text);
-  }
-
-  input[type=range] {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 100%;
-    height: 4px;
-    border-radius: 2px;
-    background: var(--surface2);
-    outline: none;
-    cursor: pointer;
-    border: 0.5px solid var(--border);
-  }
-  input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    background: var(--text);
-    cursor: pointer;
-    border: 2px solid var(--bg);
-    transition: background 0.15s;
-  }
-  input[type=range]:hover::-webkit-slider-thumb { background: var(--teal); }
-  input[type=range]::-moz-range-thumb {
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    background: var(--text);
-    cursor: pointer;
-    border: 2px solid var(--bg);
-  }
-
-  .divider {
-    border: none;
-    border-top: 0.5px solid var(--border);
-    margin: 12px 0;
-  }
-
-  /* ── Charts panel ── */
-  .charts-col { display: flex; flex-direction: column; gap: 12px; }
-
-  .chart-wrap {
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    border-radius: var(--r-lg);
-    padding: 16px;
-  }
-  .chart-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: 12px;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .chart-title {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text);
-  }
-  .chart-sub {
-    font-size: 10px;
-    font-family: var(--font-mono);
-    color: var(--dim);
-  }
-  .legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-top: 10px;
-  }
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 11px;
-    font-family: var(--font-mono);
-    color: var(--muted);
-  }
-  .legend-line {
-    width: 18px;
-    height: 2px;
-    border-radius: 1px;
-  }
-  .legend-dash {
-    width: 18px;
-    height: 2px;
-    background: repeating-linear-gradient(90deg, var(--dim) 0, var(--dim) 4px, transparent 4px, transparent 8px);
-  }
-
-  canvas { display: block; }
-
-  /* ── Zone pill ── */
-  .zone-a { color: var(--coral); }
-  .zone-b { color: var(--amber); }
-  .zone-c { color: var(--teal); }
-  .neg-pos { color: var(--teal); }
-  .neg-neg { color: var(--coral); }
-
-  /* ── Equation bar ── */
-  .eq-bar {
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    border-radius: var(--r);
-    padding: 10px 16px;
-    margin-bottom: 20px;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--muted);
-    display: flex;
-    gap: 24px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-  .eq-bar span { color: var(--text); }
-  .eq-bar .eq-sep { color: var(--dim); }
-
-  /* ── Threshold annotation ── */
-  .threshold-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 11px;
-    font-family: var(--font-mono);
-    color: var(--dim);
-    margin-top: 8px;
-  }
+/* Colours */
+.neg-pos{color:var(--teal)}.neg-neg{color:var(--coral)}
+.zone-a{color:var(--coral)}.zone-b{color:var(--amber)}.zone-c{color:var(--teal)}
 </style>
 </head>
 <body>
 <div class="shell">
 
-  <header>
-    <div class="header-left">
-      <h1>NEG Matrix Dashboard</h1>
-    </div>
-    <span class="badge">Battery Lifecycle Management</span>
-  </header>
+<header>
+  <div class="header-left">
+    <h1>NEG Matrix Dashboard</h1>
+  </div>
+  <span class="badge">Battery Lifecycle Management</span>
+</header>
 
-  <div class="eq-bar">
-    <span>EEG = g · ρ · β · d₂</span>
-    <span class="eq-sep">|</span>
-    <span>IEI = l · ½ · βρ · [d₁²(b₁−βρ)/b₁ + (d₁−d₂)²(b₂−βρ)/b₂]</span>
-    <span class="eq-sep">|</span>
-    <span>NEG = EEG − IEI</span>
+<div class="eq-bar">
+  <span>EEG = g · ρ · β · d₂</span><span class="sep">|</span>
+  <span>IEI = l · ½ · βρ · [d₁²(b₁−βρ)/b₁ + (d₁−d₂)²(b₂−βρ)/b₂]</span><span class="sep">|</span>
+  <span>NEG = EEG − IEI</span>
+</div>
+
+<!-- Region selector -->
+<div class="region-bar">
+  <button class="region-btn" data-region="custom" onclick="selectRegion('custom')">
+    <span class="flag">🌐</span>
+    <div class="rname">Custom</div>
+    <div class="rstatus">manual sliders</div>
+  </button>
+  <button class="region-btn" data-region="us" onclick="selectRegion('us')">
+    <span class="flag">🇺🇸</span>
+    <div class="rname">United States</div>
+    <div class="rstatus">moderate grid</div>
+  </button>
+  <button class="region-btn" data-region="eu" onclick="selectRegion('eu')">
+    <span class="flag">🇪🇺</span>
+    <div class="rname">Europe</div>
+    <div class="rstatus">cleanest grid</div>
+  </button>
+  <button class="region-btn" data-region="cn" onclick="selectRegion('cn')">
+    <span class="flag">🇨🇳</span>
+    <div class="rname">China</div>
+    <div class="rstatus">high capacity</div>
+  </button>
+  <button class="region-btn" data-region="in" onclick="selectRegion('in')">
+    <span class="flag">🇮🇳</span>
+    <div class="rname">India</div>
+    <div class="rstatus">coal-heavy grid</div>
+  </button>
+</div>
+
+<!-- Region context card -->
+<div class="region-context" id="region-context" style="display:none">
+  <div class="ctx-item">
+    <div class="ctx-label">Grid Carbon Intensity</div>
+    <div class="ctx-val" id="ctx-ci">—</div>
+    <div class="ctx-sub" id="ctx-ci-src">—</div>
+  </div>
+  <div class="ctx-item">
+    <div class="ctx-label">Recycling Maturity</div>
+    <div class="ctx-val" id="ctx-rec">—</div>
+    <div class="ctx-sub" id="ctx-rec-src">—</div>
+  </div>
+  <div class="ctx-item">
+    <div class="ctx-label">IEI factor (l) set to</div>
+    <div class="ctx-val" id="ctx-l">—</div>
+    <div class="ctx-sub">scaled from gCO₂/kWh</div>
+  </div>
+  <div class="ctx-item">
+    <div class="ctx-label">EEG factor (g) set to</div>
+    <div class="ctx-val" id="ctx-g">—</div>
+    <div class="ctx-sub">scaled from recycling score</div>
+  </div>
+</div>
+
+<!-- Metric strip -->
+<div class="metric-strip">
+  <div class="metric-card mc-eeg">
+    <div class="label">EEG</div>
+    <div class="value" id="m-eeg" style="color:var(--blue)">—</div>
+    <div class="sub">end-of-life env. gain</div>
+  </div>
+  <div class="metric-card mc-iei">
+    <div class="label">IEI</div>
+    <div class="value" id="m-iei" style="color:var(--coral)">—</div>
+    <div class="sub">in-life env. impact</div>
+  </div>
+  <div class="metric-card mc-neg">
+    <div class="label">NEG</div>
+    <div class="value" id="m-neg">—</div>
+    <div class="sub">net environmental gain</div>
+  </div>
+  <div class="metric-card mc-zone">
+    <div class="label">IEI Zone (Lemma 1)</div>
+    <div class="value" id="m-zone" style="font-size:16px">—</div>
+    <div class="sub" id="m-zone-sub">ρ̂ = —</div>
+  </div>
+</div>
+
+<!-- Main grid -->
+<div class="main-grid">
+
+  <!-- LEFT -->
+  <div>
+    <div class="panel">
+      <div class="panel-title">Sweep parameters</div>
+      <div class="slider-group">
+        <div class="slider-header"><span class="sname">ρ &nbsp;(BMS effort)</span><span class="sval" id="v-rho">1.00</span></div>
+        <input type="range" id="sl-rho" min="0.01" max="5" step="0.01" value="1">
+      </div>
+      <div class="slider-group">
+        <div class="slider-header"><span class="sname">β &nbsp;(effectiveness)</span><span class="sval" id="v-beta">1.00</span></div>
+        <input type="range" id="sl-beta" min="0.1" max="5" step="0.05" value="1">
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Environmental parameters</div>
+      <div class="slider-group">
+        <div class="slider-header"><span class="sname">g &nbsp;(EEG factor)</span><span class="sval" id="v-g">1000</span></div>
+        <input type="range" id="sl-g" min="100" max="3000" step="50" value="1000">
+        <div class="override-notice" id="note-g">↑ region preset applied</div>
+      </div>
+      <div class="slider-group">
+        <div class="slider-header"><span class="sname">l &nbsp;(IEI factor)</span><span class="sval" id="v-l">500</span></div>
+        <input type="range" id="sl-l" min="50" max="2000" step="50" value="500">
+        <div class="override-notice" id="note-l">↑ region preset applied</div>
+      </div>
+
+      <hr class="divider">
+      <div class="panel-title" style="margin-top:0">Battery dynamics</div>
+      <div class="slider-group">
+        <div class="slider-header"><span class="sname">d₁ &nbsp;(1st-life BDL)</span><span class="sval" id="v-d1">0.20</span></div>
+        <input type="range" id="sl-d1" min="0.05" max="0.35" step="0.01" value="0.2">
+      </div>
+      <div class="slider-group">
+        <div class="slider-header"><span class="sname">d₂ &nbsp;(2nd-life BDL)</span><span class="sval" id="v-d2">0.70</span></div>
+        <input type="range" id="sl-d2" min="0.4" max="0.8" step="0.01" value="0.7">
+      </div>
+      <div class="slider-group">
+        <div class="slider-header"><span class="sname">b₁ &nbsp;(1st-life detn.)</span><span class="sval" id="v-b1">8.0</span></div>
+        <input type="range" id="sl-b1" min="2" max="20" step="0.5" value="8">
+      </div>
+      <div class="slider-group">
+        <div class="slider-header"><span class="sname">b₂ &nbsp;(2nd-life detn.)</span><span class="sval" id="v-b2">4.0</span></div>
+        <input type="range" id="sl-b2" min="1" max="10" step="0.5" value="4">
+      </div>
+    </div>
   </div>
 
-  <div class="metric-strip">
-    <div class="metric-card mc-eeg">
-      <div class="label">EEG</div>
-      <div class="value" id="m-eeg" style="color:var(--blue)">—</div>
-      <div class="sub">end-of-life env. gain</div>
-    </div>
-    <div class="metric-card mc-iei">
-      <div class="label">IEI</div>
-      <div class="value" id="m-iei" style="color:var(--coral)">—</div>
-      <div class="sub">in-life env. impact</div>
-    </div>
-    <div class="metric-card mc-neg">
-      <div class="label">NEG</div>
-      <div class="value" id="m-neg">—</div>
-      <div class="sub">net environmental gain</div>
-    </div>
-    <div class="metric-card mc-zone">
-      <div class="label">IEI Zone (Lemma 1)</div>
-      <div class="value" id="m-zone" style="font-size:18px">—</div>
-      <div class="sub" id="m-zone-sub">ρ̂ = —</div>
-    </div>
-  </div>
+  <!-- RIGHT -->
+  <div class="charts-col">
 
-  <div class="main-grid">
-
-    <!-- LEFT: sliders -->
-    <div>
-      <div class="panel">
-        <div class="panel-title">Sweep parameters</div>
-        <div class="slider-group">
-          <div class="slider-header">
-            <span class="sname">ρ &nbsp;(BMS effort)</span>
-            <span class="sval" id="v-rho">1.00</span>
-          </div>
-          <input type="range" id="sl-rho" min="0.01" max="5" step="0.01" value="1">
-        </div>
-        <div class="slider-group">
-          <div class="slider-header">
-            <span class="sname">β &nbsp;(effectiveness)</span>
-            <span class="sval" id="v-beta">1.00</span>
-          </div>
-          <input type="range" id="sl-beta" min="0.1" max="5" step="0.05" value="1">
-        </div>
+    <div class="chart-wrap">
+      <div class="chart-header">
+        <span class="chart-title">NEG, EEG &amp; IEI vs ρ</span>
+        <span class="chart-sub">β fixed at slider · dashed line = ρ̂ (Zone A→B boundary)</span>
       </div>
-
-      <div class="panel">
-        <div class="panel-title">Fixed parameters</div>
-
-        <div class="slider-group">
-          <div class="slider-header">
-            <span class="sname">g &nbsp;(EEG factor)</span>
-            <span class="sval" id="v-g">1000</span>
-          </div>
-          <input type="range" id="sl-g" min="100" max="3000" step="50" value="1000">
-        </div>
-        <div class="slider-group">
-          <div class="slider-header">
-            <span class="sname">l &nbsp;(IEI factor)</span>
-            <span class="sval" id="v-l">500</span>
-          </div>
-          <input type="range" id="sl-l" min="50" max="2000" step="50" value="500">
-        </div>
-
-        <hr class="divider">
-
-        <div class="slider-group">
-          <div class="slider-header">
-            <span class="sname">d₁ &nbsp;(1st-life BDL)</span>
-            <span class="sval" id="v-d1">0.20</span>
-          </div>
-          <input type="range" id="sl-d1" min="0.05" max="0.35" step="0.01" value="0.2">
-        </div>
-        <div class="slider-group">
-          <div class="slider-header">
-            <span class="sname">d₂ &nbsp;(2nd-life BDL)</span>
-            <span class="sval" id="v-d2">0.70</span>
-          </div>
-          <input type="range" id="sl-d2" min="0.4" max="0.8" step="0.01" value="0.7">
-        </div>
-
-        <hr class="divider">
-
-        <div class="slider-group">
-          <div class="slider-header">
-            <span class="sname">b₁ &nbsp;(1st-life detn.)</span>
-            <span class="sval" id="v-b1">8.0</span>
-          </div>
-          <input type="range" id="sl-b1" min="2" max="20" step="0.5" value="8">
-        </div>
-        <div class="slider-group">
-          <div class="slider-header">
-            <span class="sname">b₂ &nbsp;(2nd-life detn.)</span>
-            <span class="sval" id="v-b2">4.0</span>
-          </div>
-          <input type="range" id="sl-b2" min="1" max="10" step="0.5" value="4">
-        </div>
+      <div style="position:relative;height:210px">
+        <canvas id="chart-rho"></canvas>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-line" style="background:var(--teal)"></span>NEG</span>
+        <span class="legend-item"><span class="legend-line" style="background:var(--blue)"></span>EEG</span>
+        <span class="legend-item"><span class="legend-line" style="background:var(--coral)"></span>IEI</span>
+        <span class="legend-item"><span class="legend-dash"></span>ρ̂</span>
       </div>
     </div>
 
-    <!-- RIGHT: charts -->
-    <div class="charts-col">
-
-      <div class="chart-wrap">
-        <div class="chart-header">
-          <span class="chart-title">NEG, EEG &amp; IEI vs ρ</span>
-          <span class="chart-sub">β fixed at slider value · vertical line = ρ̂</span>
-        </div>
-        <div style="position:relative;height:220px">
-          <canvas id="chart-rho" role="img" aria-label="Line chart of NEG, EEG and IEI versus BMS effort rho">NEG, EEG and IEI values plotted against BMS effort parameter rho from 0 to 5.</canvas>
-        </div>
-        <div class="legend">
-          <span class="legend-item"><span class="legend-line" style="background:var(--teal)"></span>NEG</span>
-          <span class="legend-item"><span class="legend-line" style="background:var(--blue)"></span>EEG</span>
-          <span class="legend-item"><span class="legend-line" style="background:var(--coral)"></span>IEI</span>
-          <span class="legend-item"><span class="legend-dash"></span>ρ̂ threshold</span>
-        </div>
-        <div class="threshold-row" id="rho-hat-row">ρ̂ = —</div>
-      </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
 
       <div class="chart-wrap">
         <div class="chart-header">
           <span class="chart-title">NEG, EEG &amp; IEI vs β</span>
-          <span class="chart-sub">ρ fixed at slider value</span>
+          <span class="chart-sub">ρ held at slider</span>
         </div>
-        <div style="position:relative;height:200px">
-          <canvas id="chart-beta" role="img" aria-label="Line chart of NEG, EEG and IEI versus effectiveness beta">NEG, EEG and IEI values plotted against BMS effectiveness parameter beta from 0.1 to 5.</canvas>
+        <div style="position:relative;height:170px">
+          <canvas id="chart-beta"></canvas>
         </div>
         <div class="legend">
           <span class="legend-item"><span class="legend-line" style="background:var(--teal)"></span>NEG</span>
@@ -460,284 +280,342 @@
 
       <div class="chart-wrap">
         <div class="chart-header">
-          <span class="chart-title">NEG surface — ρ × β heatmap</span>
-          <span class="chart-sub">green = positive NEG · red = negative NEG</span>
+          <span class="chart-title">ρ × β heatmap</span>
+          <span class="chart-sub">green=+NEG · red=−NEG · ✦ = current</span>
         </div>
-        <div style="position:relative;height:180px">
-          <canvas id="chart-heat" role="img" aria-label="Heatmap of NEG across rho and beta parameter space">Heatmap showing net environmental gain across combinations of rho and beta.</canvas>
+        <div style="position:relative;height:170px">
+          <canvas id="chart-heat"></canvas>
         </div>
         <div class="legend">
-          <span class="legend-item" style="gap:3px">
-            <span style="display:inline-block;width:80px;height:8px;border-radius:2px;background:linear-gradient(to right,#f06b45,#1c2030,#1fcf94)"></span>
-            <span>negative NEG → zero → positive NEG</span>
+          <span class="legend-item">
+            <span style="display:inline-block;width:70px;height:7px;border-radius:2px;background:linear-gradient(to right,#f06b45,#1c2030,#1fcf94)"></span>
+            <span>−NEG → 0 → +NEG</span>
           </span>
         </div>
       </div>
 
     </div>
-  </div>
 
+    <!-- Regional comparison bar chart -->
+    <div class="chart-wrap">
+      <div class="chart-header">
+        <span class="chart-title">Regional NEG comparison</span>
+        <span class="chart-sub">at current ρ &amp; β · using region-calibrated g &amp; l values</span>
+      </div>
+      <div style="position:relative;height:130px">
+        <canvas id="chart-regions"></canvas>
+      </div>
+    </div>
+
+  </div>
+</div>
 </div>
 
 <script>
-/* ── Math ── */
-function calcEEG(rho, beta, g, d2) {
-  return g * rho * beta * d2;
-}
-function calcIEI(rho, beta, l, d1, d2, b1, b2) {
-  var br = beta * rho;
-  var t1 = d1 * d1 * (b1 - br) / b1;
-  var t2 = (d1 - d2) * (d1 - d2) * (b2 - br) / b2;
-  return l * 0.5 * beta * rho * (t1 + t2);
-}
-function calcNEG(rho, beta, p) {
-  return calcEEG(rho, beta, p.g, p.d2) - calcIEI(rho, beta, p.l, p.d1, p.d2, p.b1, p.b2);
-}
-function calcRhoHat(p) {
-  var num = p.b1 * p.b2 * (2 * p.d1 * p.d1 - 2 * p.d1 * p.d2 + p.d2 * p.d2);
-  var den = p.beta * (p.b1 * (p.d1 - p.d2) * (p.d1 - p.d2) + p.b2 * p.d1 * p.d1);
-  return den > 0 ? num / den : null;
-}
-function zoneOf(rho, rhoHat) {
-  if (rhoHat == null) return { label: 'N/A', cls: '' };
-  if (rho <= rhoHat / 2) return { label: 'Zone A', cls: 'zone-a', desc: 'IEI↑ with ρ' };
-  if (rho <= rhoHat)     return { label: 'Zone B', cls: 'zone-b', desc: 'IEI↓ with ρ, IEI>0' };
-  return                        { label: 'Zone C', cls: 'zone-c', desc: 'IEI<0, IEI↓ with ρ' };
-}
-
-/* ── Params ── */
-function getP() {
-  return {
-    rho:  +document.getElementById('sl-rho').value,
-    beta: +document.getElementById('sl-beta').value,
-    g:    +document.getElementById('sl-g').value,
-    l:    +document.getElementById('sl-l').value,
-    d1:   +document.getElementById('sl-d1').value,
-    d2:   +document.getElementById('sl-d2').value,
-    b1:   +document.getElementById('sl-b1').value,
-    b2:   +document.getElementById('sl-b2').value
-  };
-}
-
-/* ── linspace ── */
-function linspace(a, b, n) {
-  var arr = [], step = (b - a) / (n - 1);
-  for (var i = 0; i < n; i++) arr.push(+(a + step * i).toFixed(4));
-  return arr;
-}
-
-/* ── Heatmap helpers ── */
-function negToColor(val, vmin, vmax) {
-  if (val >= 0) {
-    var t = Math.min(val / (vmax || 1), 1);
-    var r = Math.round(28 + (31 - 28) * t);
-    var g = Math.round(32 + (207 - 32) * t);
-    var b = Math.round(48 + (148 - 48) * t);
-    return [r, g, b];
-  } else {
-    var t2 = Math.min(Math.abs(val) / (Math.abs(vmin) || 1), 1);
-    var r2 = Math.round(28 + (240 - 28) * t2);
-    var g2 = Math.round(32 + (107 - 32) * t2);
-    var b2 = Math.round(48 + (69 - 48) * t2);
-    return [r2, g2, b2];
-  }
-}
-
-/* ── Charts init ── */
-var N = 80, HN = 40;
-var rhoChart, betaChart, heatChart;
-
-var CHART_DEFAULTS = {
-  responsive: true,
-  maintainAspectRatio: false,
-  animation: { duration: 120 },
-  plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
-  scales: {
-    x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#4a5068', font: { family: "'JetBrains Mono',monospace", size: 10 }, maxTicksLimit: 8 } },
-    y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#4a5068', font: { family: "'JetBrains Mono',monospace", size: 10 }, callback: v => v.toFixed(0) } }
+/* ── Region presets ─────────────────────────────────────────────────────────
+   l (IEI factor): linearly scaled from grid carbon intensity (gCO2/kWh).
+     Source: Ember Global Electricity Review 2025, IEA 2024.
+     Scale: CI_gco2 / 473 (global avg) * 500 (dashboard midpoint)
+   g (EEG factor): inversely scaled from recycling maturity score (1-10).
+     High g = poor recycling = more environmental cost avoided per year.
+     China: best recycling → lower g. India: nascent → highest g.
+     Sources: IEA Global EV Outlook 2024, Ember 2025.
+   ─────────────────────────────────────────────────────────────────────────*/
+var REGIONS = {
+  us: {
+    name:'United States', flag:'🇺🇸',
+    ci: 384,   // Ember 2025: 384 gCO2/kWh
+    l: 406,    // 384/473 * 500
+    recycling_score: 5,  // ~17% salvage rate (ResearchAndMarkets 2024), growing
+    g: 1200,   // moderate-high: nascent but growing recycling infra
+    ci_src:'384 gCO₂/kWh · Ember 2025',
+    rec_src:'~17% salvage rate · nascent but growing',
+    rec_label:'Developing (5/10)'
+  },
+  eu: {
+    name:'Europe (EU)', flag:'🇪🇺',
+    ci: 213,   // Ember 2025: 213 gCO2/kWh
+    l: 225,    // 213/473 * 500
+    recycling_score: 8,  // EU Battery Regulation, 21% salvage rate, strict mandates
+    g: 650,    // lower g: cleaner recycling, strong regulation
+    ci_src:'213 gCO₂/kWh · Ember 2025',
+    rec_src:'~21% salvage rate · EU Battery Regulation',
+    rec_label:'Advanced (8/10)'
+  },
+  cn: {
+    name:'China', flag:'🇨🇳',
+    ci: 560,   // Ember 2025: 560 gCO2/kWh
+    l: 592,    // 560/473 * 500
+    recycling_score: 9,  // 65% global recycling market share, policy-mandated
+    g: 550,    // low g: excellent recycling infra means less gain from delay
+    ci_src:'560 gCO₂/kWh · Ember 2025',
+    rec_src:'~65% of global recycling capacity · IEA 2024',
+    rec_label:'Leading (9/10)'
+  },
+  in: {
+    name:'India', flag:'🇮🇳',
+    ci: 708,   // Ember 2025: 708 gCO2/kWh
+    l: 748,    // 708/473 * 500
+    recycling_score: 2,  // nascent, no large-scale infra, cited in paper itself
+    g: 1850,   // highest g: poor disposal = high environmental cost of replacement
+    ci_src:'708 gCO₂/kWh · Ember 2025',
+    rec_src:'Nascent — cited directly in Singh et al. (2026)',
+    rec_label:'Nascent (2/10)'
+  },
+  custom: {
+    name:'Custom', flag:'🌐',
+    ci: null, l: null, g: null,
+    ci_src:'—', rec_src:'—', rec_label:'—'
   }
 };
 
-function buildDataRho(p) {
-  var rhos = linspace(0.01, 5, N);
-  return {
-    labels: rhos,
-    eeg: rhos.map(r => calcEEG(r, p.beta, p.g, p.d2)),
-    iei: rhos.map(r => calcIEI(r, p.beta, p.l, p.d1, p.d2, p.b1, p.b2)),
-    neg: rhos.map(r => calcNEG(r, p.beta, p))
-  };
-}
-function buildDataBeta(p) {
-  var betas = linspace(0.1, 5, N);
-  return {
-    labels: betas,
-    eeg: betas.map(b => calcEEG(p.rho, b, p.g, p.d2)),
-    iei: betas.map(b => calcIEI(p.rho, b, p.l, p.d1, p.d2, p.b1, p.b2)),
-    neg: betas.map(b => calcNEG(p.rho, b, p))
-  };
-}
+var currentRegion = 'custom';
 
-function initCharts() {
-  var p = getP();
-  var dr = buildDataRho(p);
-  var db = buildDataBeta(p);
-
-  rhoChart = new Chart(document.getElementById('chart-rho'), {
-    type: 'line',
-    data: {
-      labels: dr.labels.map(v => v.toFixed(2)),
-      datasets: [
-        { label: 'NEG', data: dr.neg, borderColor: '#1fcf94', borderWidth: 2, pointRadius: 0, tension: 0.35, backgroundColor: 'rgba(31,207,148,0.06)', fill: true },
-        { label: 'EEG', data: dr.eeg, borderColor: '#4f9cf9', borderWidth: 1.5, pointRadius: 0, tension: 0.35, borderDash: [6, 3] },
-        { label: 'IEI', data: dr.iei, borderColor: '#f06b45', borderWidth: 1.5, pointRadius: 0, tension: 0.35, borderDash: [3, 3] }
-      ]
-    },
-    options: Object.assign({}, CHART_DEFAULTS, {
-      scales: Object.assign({}, CHART_DEFAULTS.scales, {
-        x: Object.assign({}, CHART_DEFAULTS.scales.x, { title: { display: true, text: 'ρ (BMS effort)', color: '#4a5068', font: { size: 10, family: "'JetBrains Mono',monospace" } } }),
-        y: Object.assign({}, CHART_DEFAULTS.scales.y, { title: { display: true, text: 'Value', color: '#4a5068', font: { size: 10, family: "'JetBrains Mono',monospace" } } })
-      })
-    })
+function selectRegion(key) {
+  currentRegion = key;
+  document.querySelectorAll('.region-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.region === key);
   });
-
-  betaChart = new Chart(document.getElementById('chart-beta'), {
-    type: 'line',
-    data: {
-      labels: db.labels.map(v => v.toFixed(2)),
-      datasets: [
-        { label: 'NEG', data: db.neg, borderColor: '#1fcf94', borderWidth: 2, pointRadius: 0, tension: 0.35, backgroundColor: 'rgba(31,207,148,0.06)', fill: true },
-        { label: 'EEG', data: db.eeg, borderColor: '#9b7ff4', borderWidth: 1.5, pointRadius: 0, tension: 0.35, borderDash: [6, 3] },
-        { label: 'IEI', data: db.iei, borderColor: '#f06b45', borderWidth: 1.5, pointRadius: 0, tension: 0.35, borderDash: [3, 3] }
-      ]
-    },
-    options: Object.assign({}, CHART_DEFAULTS, {
-      scales: Object.assign({}, CHART_DEFAULTS.scales, {
-        x: Object.assign({}, CHART_DEFAULTS.scales.x, { title: { display: true, text: 'β (effectiveness)', color: '#4a5068', font: { size: 10, family: "'JetBrains Mono',monospace" } } }),
-        y: Object.assign({}, CHART_DEFAULTS.scales.y)
-      })
-    })
-  });
-
-  initHeatmap(p);
-  updateMetrics(p);
-}
-
-/* ── Heatmap (raw canvas) ── */
-function initHeatmap(p) {
-  var canvas = document.getElementById('chart-heat');
-  drawHeatmap(canvas, p);
-}
-
-function drawHeatmap(canvas, p) {
-  var ctx = canvas.getContext('2d');
-  var W = canvas.parentElement.clientWidth - 32;
-  var H = 180;
-  canvas.width = W; canvas.height = H;
-  var rhos  = linspace(0.01, 5, HN);
-  var betas = linspace(0.1, 5, HN);
-  var cw = W / HN, ch = H / HN;
-
-  /* compute range */
-  var vals = [];
-  for (var bi = 0; bi < HN; bi++) {
-    for (var ri = 0; ri < HN; ri++) {
-      vals.push(calcNEG(rhos[ri], betas[bi], p));
-    }
+  var ctx = document.getElementById('region-context');
+  if (key === 'custom') {
+    ctx.style.display = 'none';
+    document.getElementById('note-g').classList.remove('show');
+    document.getElementById('note-l').classList.remove('show');
+  } else {
+    var r = REGIONS[key];
+    ctx.style.display = 'grid';
+    document.getElementById('ctx-ci').textContent = r.ci + ' gCO₂/kWh';
+    document.getElementById('ctx-ci-src').textContent = r.ci_src;
+    document.getElementById('ctx-rec').textContent = r.rec_label;
+    document.getElementById('ctx-rec-src').textContent = r.rec_src;
+    document.getElementById('ctx-l').textContent = r.l;
+    document.getElementById('ctx-g').textContent = r.g;
+    // Push values to sliders
+    setSlider('g', r.g);
+    setSlider('l', r.l);
+    document.getElementById('note-g').classList.add('show');
+    document.getElementById('note-l').classList.add('show');
   }
-  var vmax = Math.max(...vals.filter(v => v >= 0), 1);
-  var vmin = Math.min(...vals.filter(v => v < 0), -1);
-
-  for (var bi2 = 0; bi2 < HN; bi2++) {
-    for (var ri2 = 0; ri2 < HN; ri2++) {
-      var neg = calcNEG(rhos[ri2], betas[bi2], p);
-      var col = negToColor(neg, vmin, vmax);
-      ctx.fillStyle = 'rgb(' + col[0] + ',' + col[1] + ',' + col[2] + ')';
-      ctx.fillRect(ri2 * cw, (HN - 1 - bi2) * ch, Math.ceil(cw) + 1, Math.ceil(ch) + 1);
-    }
-  }
-
-  /* axes labels */
-  ctx.fillStyle = '#4a5068';
-  ctx.font = '10px "JetBrains Mono",monospace';
-  ctx.fillText('ρ →', W - 30, H - 4);
-  ctx.save(); ctx.translate(12, H / 2); ctx.rotate(-Math.PI / 2);
-  ctx.fillText('β →', 0, 0); ctx.restore();
-
-  /* current ρ, β crosshair */
-  var rx = ((p.rho - 0.01) / (5 - 0.01)) * W;
-  var by = H - ((p.beta - 0.1) / (5 - 0.1)) * H;
-  ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([3, 3]);
-  ctx.beginPath(); ctx.moveTo(rx, 0); ctx.lineTo(rx, H); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(0, by); ctx.lineTo(W, by); ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.beginPath(); ctx.arc(rx, by, 4, 0, Math.PI * 2);
-  ctx.fillStyle = '#ffffff'; ctx.fill();
+  updateAll();
 }
 
-/* ── Update ── */
-function updateAll() {
-  var p = getP();
-  var dr = buildDataRho(p);
-  var db = buildDataBeta(p);
-
-  rhoChart.data.datasets[0].data = dr.neg;
-  rhoChart.data.datasets[1].data = dr.eeg;
-  rhoChart.data.datasets[2].data = dr.iei;
-  rhoChart.update('none');
-
-  betaChart.data.datasets[0].data = db.neg;
-  betaChart.data.datasets[1].data = db.eeg;
-  betaChart.data.datasets[2].data = db.iei;
-  betaChart.update('none');
-
-  drawHeatmap(document.getElementById('chart-heat'), p);
-  updateMetrics(p);
-}
-
-function updateMetrics(p) {
-  var eeg = calcEEG(p.rho, p.beta, p.g, p.d2);
-  var iei = calcIEI(p.rho, p.beta, p.l, p.d1, p.d2, p.b1, p.b2);
-  var neg = eeg - iei;
-  var rhoHat = calcRhoHat(p);
-  var z = zoneOf(p.rho, rhoHat);
-
-  document.getElementById('m-eeg').textContent = eeg.toFixed(1);
-  document.getElementById('m-iei').textContent = iei.toFixed(1);
-  var negEl = document.getElementById('m-neg');
-  negEl.textContent = neg.toFixed(1);
-  negEl.className = 'value ' + (neg >= 0 ? 'neg-pos' : 'neg-neg');
-  var zoneEl = document.getElementById('m-zone');
-  zoneEl.textContent = z.label;
-  zoneEl.className = 'value ' + z.cls;
-  document.getElementById('m-zone-sub').textContent = z.desc || '';
-
-  var rhoHatStr = rhoHat != null ? rhoHat.toFixed(3) : 'N/A';
-  document.getElementById('rho-hat-row').textContent = 'ρ̂ = ' + rhoHatStr + '  (Zone A↔B boundary)';
-  document.getElementById('m-zone-sub').textContent = 'ρ̂ = ' + rhoHatStr;
-}
-
-/* ── Bind sliders ── */
-function bindSlider(id, display, decimals) {
+function setSlider(id, val) {
   var el = document.getElementById('sl-' + id);
-  var out = document.getElementById('v-' + id);
-  el.addEventListener('input', function () {
-    out.textContent = parseFloat(el.value).toFixed(decimals);
+  el.value = val;
+  document.getElementById('v-' + id).textContent = val;
+}
+
+/* ── Math ── */
+function calcEEG(rho,beta,g,d2){return g*rho*beta*d2}
+function calcIEI(rho,beta,l,d1,d2,b1,b2){
+  var br=beta*rho;
+  return l*0.5*beta*rho*(d1*d1*(b1-br)/b1 + (d1-d2)*(d1-d2)*(b2-br)/b2);
+}
+function calcNEG(rho,beta,p){return calcEEG(rho,beta,p.g,p.d2)-calcIEI(rho,beta,p.l,p.d1,p.d2,p.b1,p.b2)}
+function calcRhoHat(p){
+  var num=p.b1*p.b2*(2*p.d1*p.d1-2*p.d1*p.d2+p.d2*p.d2);
+  var den=p.beta*(p.b1*(p.d1-p.d2)*(p.d1-p.d2)+p.b2*p.d1*p.d1);
+  return den>0?num/den:null;
+}
+function zoneOf(rho,rhoHat){
+  if(rhoHat==null)return{label:'N/A',cls:'',desc:''};
+  if(rho<=rhoHat/2)return{label:'Zone A',cls:'zone-a',desc:'IEI↑ with ρ'};
+  if(rho<=rhoHat)return{label:'Zone B',cls:'zone-b',desc:'IEI↓ with ρ, IEI>0'};
+  return{label:'Zone C',cls:'zone-c',desc:'IEI<0, IEI↓ with ρ'};
+}
+
+function getP(){
+  return{
+    rho:+document.getElementById('sl-rho').value,
+    beta:+document.getElementById('sl-beta').value,
+    g:+document.getElementById('sl-g').value,
+    l:+document.getElementById('sl-l').value,
+    d1:+document.getElementById('sl-d1').value,
+    d2:+document.getElementById('sl-d2').value,
+    b1:+document.getElementById('sl-b1').value,
+    b2:+document.getElementById('sl-b2').value
+  };
+}
+
+function linspace(a,b,n){
+  var arr=[],step=(b-a)/(n-1);
+  for(var i=0;i<n;i++)arr.push(+(a+step*i).toFixed(4));
+  return arr;
+}
+
+/* ── Heatmap colour ── */
+function negToColor(val,vmin,vmax){
+  if(val>=0){var t=Math.min(val/(vmax||1),1);return[Math.round(28+(31-28)*t),Math.round(32+(207-32)*t),Math.round(48+(148-48)*t)];}
+  var t2=Math.min(Math.abs(val)/(Math.abs(vmin)||1),1);
+  return[Math.round(28+(240-28)*t2),Math.round(32+(107-32)*t2),Math.round(48+(69-48)*t2)];
+}
+
+/* ── Chart instances ── */
+var rhoChart,betaChart,regionsChart;
+var N=80,HN=36;
+
+var CD = {
+  responsive:true,maintainAspectRatio:false,animation:{duration:100},
+  plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},
+  scales:{
+    x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#4a5068',font:{family:"'JetBrains Mono',monospace",size:9},maxTicksLimit:7}},
+    y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#4a5068',font:{family:"'JetBrains Mono',monospace",size:9},callback:function(v){return v.toFixed(0)}}}
+  }
+};
+
+function initCharts(){
+  var p=getP();
+  var rhos=linspace(0.01,5,N),betas=linspace(0.1,5,N);
+
+  rhoChart=new Chart(document.getElementById('chart-rho'),{
+    type:'line',
+    data:{labels:rhos.map(function(v){return v.toFixed(2)}),datasets:[
+      {label:'NEG',data:rhos.map(function(r){return calcNEG(r,p.beta,p)}),borderColor:'#1fcf94',borderWidth:2,pointRadius:0,tension:0.35,backgroundColor:'rgba(31,207,148,0.06)',fill:true},
+      {label:'EEG',data:rhos.map(function(r){return calcEEG(r,p.beta,p.g,p.d2)}),borderColor:'#4f9cf9',borderWidth:1.5,pointRadius:0,tension:0.35,borderDash:[6,3]},
+      {label:'IEI',data:rhos.map(function(r){return calcIEI(r,p.beta,p.l,p.d1,p.d2,p.b1,p.b2)}),borderColor:'#f06b45',borderWidth:1.5,pointRadius:0,tension:0.35,borderDash:[3,3]}
+    ]},
+    options:Object.assign({},CD,{scales:Object.assign({},CD.scales,{
+      x:Object.assign({},CD.scales.x,{title:{display:true,text:'ρ (effort)',color:'#4a5068',font:{size:9,family:"'JetBrains Mono',monospace"}}}),
+      y:Object.assign({},CD.scales.y,{title:{display:true,text:'value',color:'#4a5068',font:{size:9,family:"'JetBrains Mono',monospace"}}})
+    })})
+  });
+
+  betaChart=new Chart(document.getElementById('chart-beta'),{
+    type:'line',
+    data:{labels:betas.map(function(v){return v.toFixed(2)}),datasets:[
+      {label:'NEG',data:betas.map(function(b){return calcNEG(p.rho,b,p)}),borderColor:'#1fcf94',borderWidth:2,pointRadius:0,tension:0.35,backgroundColor:'rgba(31,207,148,0.06)',fill:true},
+      {label:'EEG',data:betas.map(function(b){return calcEEG(p.rho,b,p.g,p.d2)}),borderColor:'#9b7ff4',borderWidth:1.5,pointRadius:0,tension:0.35,borderDash:[6,3]},
+      {label:'IEI',data:betas.map(function(b){return calcIEI(p.rho,b,p.l,p.d1,p.d2,p.b1,p.b2)}),borderColor:'#f06b45',borderWidth:1.5,pointRadius:0,tension:0.35,borderDash:[3,3]}
+    ]},
+    options:Object.assign({},CD,{scales:Object.assign({},CD.scales,{
+      x:Object.assign({},CD.scales.x,{title:{display:true,text:'β (effectiveness)',color:'#4a5068',font:{size:9,family:"'JetBrains Mono',monospace"}}})
+    })})
+  });
+
+  // Regional comparison bar chart
+  var regionKeys=['us','eu','cn','in'];
+  var regionLabels=regionKeys.map(function(k){return REGIONS[k].flag+' '+REGIONS[k].name});
+  var regionNEGs=regionKeys.map(function(k){
+    var rp=Object.assign({},p,{g:REGIONS[k].g,l:REGIONS[k].l});
+    return calcNEG(p.rho,p.beta,rp);
+  });
+  regionsChart=new Chart(document.getElementById('chart-regions'),{
+    type:'bar',
+    data:{
+      labels:regionLabels,
+      datasets:[
+        {label:'NEG',data:regionNEGs,backgroundColor:regionNEGs.map(function(v){return v>=0?'rgba(31,207,148,0.6)':'rgba(240,107,69,0.6)'}),borderColor:regionNEGs.map(function(v){return v>=0?'#1fcf94':'#f06b45'}),borderWidth:1,borderRadius:4}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,animation:{duration:150},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return 'NEG: '+c.parsed.y.toFixed(1)}}}},
+      scales:{
+        x:{grid:{display:false},ticks:{color:'#7a8099',font:{family:"'JetBrains Mono',monospace",size:10}}},
+        y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#4a5068',font:{family:"'JetBrains Mono',monospace",size:9},callback:function(v){return v.toFixed(0)}}}
+      }
+    }
+  });
+
+  drawHeatmap(p);
+  updateMetrics(p);
+}
+
+function drawHeatmap(p){
+  var canvas=document.getElementById('chart-heat');
+  var W=canvas.parentElement.clientWidth-28,H=170;
+  canvas.width=W;canvas.height=H;
+  var ctx=canvas.getContext('2d');
+  var rhos=linspace(0.01,5,HN),betas=linspace(0.1,5,HN);
+  var cw=W/HN,ch=H/HN;
+  var vals=[];
+  for(var bi=0;bi<HN;bi++)for(var ri=0;ri<HN;ri++)vals.push(calcNEG(rhos[ri],betas[bi],p));
+  var vmax=Math.max.apply(null,vals.filter(function(v){return v>=0}).concat([1]));
+  var vmin=Math.min.apply(null,vals.filter(function(v){return v<0}).concat([-1]));
+  for(var bi2=0;bi2<HN;bi2++){
+    for(var ri2=0;ri2<HN;ri2++){
+      var col=negToColor(calcNEG(rhos[ri2],betas[bi2],p),vmin,vmax);
+      ctx.fillStyle='rgb('+col[0]+','+col[1]+','+col[2]+')';
+      ctx.fillRect(ri2*cw,(HN-1-bi2)*ch,Math.ceil(cw)+1,Math.ceil(ch)+1);
+    }
+  }
+  ctx.fillStyle='#4a5068';ctx.font='9px "JetBrains Mono",monospace';
+  ctx.fillText('ρ →',W-24,H-3);
+  ctx.save();ctx.translate(10,H/2);ctx.rotate(-Math.PI/2);ctx.fillText('β →',0,0);ctx.restore();
+  var rx=((p.rho-0.01)/(5-0.01))*W;
+  var by=H-((p.beta-0.1)/(5-0.1))*H;
+  ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=1;ctx.setLineDash([2,2]);
+  ctx.beginPath();ctx.moveTo(rx,0);ctx.lineTo(rx,H);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,by);ctx.lineTo(W,by);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();ctx.arc(rx,by,4,0,Math.PI*2);
+  ctx.fillStyle='#fff';ctx.fill();
+}
+
+function updateAll(){
+  var p=getP();
+  var rhos=linspace(0.01,5,N),betas=linspace(0.1,5,N);
+  rhoChart.data.datasets[0].data=rhos.map(function(r){return calcNEG(r,p.beta,p)});
+  rhoChart.data.datasets[1].data=rhos.map(function(r){return calcEEG(r,p.beta,p.g,p.d2)});
+  rhoChart.data.datasets[2].data=rhos.map(function(r){return calcIEI(r,p.beta,p.l,p.d1,p.d2,p.b1,p.b2)});
+  rhoChart.update('none');
+  betaChart.data.datasets[0].data=betas.map(function(b){return calcNEG(p.rho,b,p)});
+  betaChart.data.datasets[1].data=betas.map(function(b){return calcEEG(p.rho,b,p.g,p.d2)});
+  betaChart.data.datasets[2].data=betas.map(function(b){return calcIEI(p.rho,b,p.l,p.d1,p.d2,p.b1,p.b2)});
+  betaChart.update('none');
+  // Update regional bars
+  var regionKeys=['us','eu','cn','in'];
+  var regionNEGs=regionKeys.map(function(k){
+    var rp=Object.assign({},p,{g:REGIONS[k].g,l:REGIONS[k].l});
+    return calcNEG(p.rho,p.beta,rp);
+  });
+  regionsChart.data.datasets[0].data=regionNEGs;
+  regionsChart.data.datasets[0].backgroundColor=regionNEGs.map(function(v){return v>=0?'rgba(31,207,148,0.6)':'rgba(240,107,69,0.6)'});
+  regionsChart.data.datasets[0].borderColor=regionNEGs.map(function(v){return v>=0?'#1fcf94':'#f06b45'});
+  regionsChart.update('none');
+  drawHeatmap(p);
+  updateMetrics(p);
+}
+
+function updateMetrics(p){
+  var eeg=calcEEG(p.rho,p.beta,p.g,p.d2);
+  var iei=calcIEI(p.rho,p.beta,p.l,p.d1,p.d2,p.b1,p.b2);
+  var neg=eeg-iei;
+  var rhoHat=calcRhoHat(p);
+  var z=zoneOf(p.rho,rhoHat);
+  document.getElementById('m-eeg').textContent=eeg.toFixed(1);
+  document.getElementById('m-iei').textContent=iei.toFixed(1);
+  var negEl=document.getElementById('m-neg');
+  negEl.textContent=neg.toFixed(1);
+  negEl.className='value '+(neg>=0?'neg-pos':'neg-neg');
+  var zEl=document.getElementById('m-zone');
+  zEl.textContent=z.label;zEl.className='value '+z.cls;
+  document.getElementById('m-zone-sub').textContent='ρ̂ = '+(rhoHat!=null?rhoHat.toFixed(3):'N/A');
+}
+
+/* ── Slider binding ── */
+function bindSlider(id,decimals){
+  var el=document.getElementById('sl-'+id);
+  var out=document.getElementById('v-'+id);
+  el.addEventListener('input',function(){
+    out.textContent=parseFloat(el.value).toFixed(decimals);
+    if((id==='g'||id==='l')&&currentRegion!=='custom'){
+      currentRegion='custom';
+      document.querySelectorAll('.region-btn').forEach(function(b){b.classList.toggle('active',b.dataset.region==='custom')});
+      document.getElementById('region-context').style.display='none';
+      document.getElementById('note-g').classList.remove('show');
+      document.getElementById('note-l').classList.remove('show');
+    }
     updateAll();
   });
 }
 
-window.addEventListener('load', function () {
+window.addEventListener('load',function(){
   initCharts();
-  ['rho','beta','g','l','d1','d2','b1','b2'].forEach(function(id) {
-    var dec = {'rho':2,'beta':2,'g':0,'l':0,'d1':2,'d2':2,'b1':1,'b2':1}[id];
-    bindSlider(id, id, dec);
-  });
-  window.addEventListener('resize', function() {
-    var p = getP();
-    drawHeatmap(document.getElementById('chart-heat'), p);
-  });
+  [['rho',2],['beta',2],['g',0],['l',0],['d1',2],['d2',2],['b1',1],['b2',1]].forEach(function(x){bindSlider(x[0],x[1])});
+  window.addEventListener('resize',function(){var p=getP();drawHeatmap(p)});
+  // Default: select Custom active state
+  document.querySelector('[data-region="custom"]').classList.add('active');
 });
 </script>
 </body>
