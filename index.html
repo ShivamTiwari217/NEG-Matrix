@@ -3,619 +3,509 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NEG Matrix Dashboard — Battery Lifecycle Management</title>
+<title>NEG Matrix Dashboard — Sourced regional calibration</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0d0f12;--surface:#151820;--surface2:#1c2030;--surface3:#222638;
-  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
-  --text:#e8eaf0;--muted:#7a8099;--dim:#4a5068;
-  --teal:#1fcf94;--teal-dim:rgba(31,207,148,0.12);
-  --blue:#4f9cf9;--coral:#f06b45;--purple:#9b7ff4;--amber:#f5a623;
-  --font-mono:'JetBrains Mono','Fira Code',monospace;
-  --font-sans:'DM Sans',system-ui,sans-serif;
-  --r:8px;--r-lg:12px;
+  --bg:#0d0f12;--surface:#151820;--surface2:#1c2030;
+  --border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.13);
+  --text:#e8eaf0;--muted:#8a90a8;--dim:#555c75;
+  --teal:#1fcf94;--blue:#4f9cf9;--coral:#f06b45;--purple:#9b7ff4;--amber:#f5a623;
+  --mono:'JetBrains Mono','Fira Code',monospace;--sans:'DM Sans',system-ui,sans-serif;
+  --r:8px;--rl:12px;
 }
-body{background:var(--bg);color:var(--text);font-family:var(--font-sans);font-size:14px;line-height:1.5;min-height:100vh}
-.shell{max-width:1200px;margin:0 auto;padding:24px 20px 48px}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5;min-height:100vh}
+.shell{max-width:1240px;margin:0 auto;padding:24px 20px 56px}
+header{margin-bottom:16px;border-bottom:.5px solid var(--border2);padding-bottom:14px;display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap}
+header h1{font-size:20px;font-weight:500;letter-spacing:-.3px}
+header p{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:3px}
+.legend-chips{display:flex;gap:14px;font-family:var(--mono);font-size:10px;color:var(--muted)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.dot.src{background:var(--teal)}.dot.asm{background:var(--amber)}.dot.none{background:transparent;border:.5px solid var(--dim)}
 
-/* Header */
-header{margin-bottom:20px;border-bottom:.5px solid var(--border2);padding-bottom:16px;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
-.header-left h1{font-size:20px;font-weight:500;letter-spacing:-.3px;margin-bottom:3px}
-.header-left p{font-size:11px;color:var(--muted);font-family:var(--font-mono)}
-.badge{font-family:var(--font-mono);font-size:11px;padding:4px 10px;border-radius:4px;border:.5px solid var(--border2);color:var(--muted)}
+.eq-bar{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:9px 14px;margin-bottom:14px;font-family:var(--mono);font-size:11px;color:var(--muted);display:flex;gap:10px 22px;flex-wrap:wrap}
+.eq-bar b{color:var(--text);font-weight:400}
 
-/* Equation bar */
-.eq-bar{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:9px 16px;margin-bottom:16px;font-family:var(--font-mono);font-size:11px;color:var(--muted);display:flex;gap:20px;flex-wrap:wrap;align-items:center}
-.eq-bar span{color:var(--text)}.eq-bar .sep{color:var(--dim)}
-
-/* Region selector */
-.region-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
-.region-btn{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:10px 8px;cursor:pointer;transition:all .15s;text-align:center}
+.region-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+@media(max-width:700px){.region-bar{grid-template-columns:repeat(3,1fr)}}
+.region-btn{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:10px 8px;cursor:pointer;text-align:center;color:var(--text);font-family:inherit;transition:all .15s}
 .region-btn:hover{border-color:var(--border2);background:var(--surface2)}
-.region-btn.active{border-color:var(--teal);background:rgba(31,207,148,0.07)}
-.region-btn .flag{font-size:22px;display:block;margin-bottom:4px}
-.region-btn .rname{font-size:11px;font-weight:500;color:var(--text)}
-.region-btn .rstatus{font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-top:2px}
+.region-btn.active{border-color:var(--teal);background:rgba(31,207,148,.07)}
+.region-btn .flag{font-size:20px;display:block;margin-bottom:2px}
+.region-btn .rname{font-size:12px;font-weight:500}
+.region-btn .rsub{font-size:10px;font-family:var(--mono);color:var(--muted);margin-top:1px}
 .region-btn.active .rname{color:var(--teal)}
 
-/* Region context card */
-.region-context{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px}
-@media(max-width:700px){.region-context{grid-template-columns:1fr 1fr}}
-.ctx-item .ctx-label{font-size:10px;font-family:var(--font-mono);color:var(--dim);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px}
-.ctx-item .ctx-val{font-size:14px;font-weight:500;font-family:var(--font-mono)}
-.ctx-item .ctx-sub{font-size:10px;color:var(--muted);margin-top:2px}
+.calib{background:var(--surface);border:.5px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:14px}
+.calib-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:10px}
+@media(max-width:760px){.calib-grid{grid-template-columns:repeat(2,1fr)}}
+.ci .lab{font-size:10px;font-family:var(--mono);color:var(--dim);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px}
+.ci .val{font-size:18px;font-family:var(--mono);font-weight:500}
+.ci .sub{font-size:10px;font-family:var(--mono);color:var(--muted);margin-top:2px}
+.calib-note{font-size:12px;color:var(--muted);line-height:1.5;border-top:.5px solid var(--border);padding-top:10px}
+.calib-note b{color:var(--amber);font-weight:500}
 
-/* Metric strip */
-.metric-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
-@media(max-width:600px){.metric-strip{grid-template-columns:repeat(2,1fr)}}
-.metric-card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:12px 14px;position:relative;overflow:hidden}
-.metric-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:var(--r) var(--r) 0 0}
-.mc-eeg::before{background:var(--blue)}.mc-iei::before{background:var(--coral)}.mc-neg::before{background:var(--teal)}.mc-zone::before{background:var(--purple)}
-.metric-card .label{font-size:10px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
-.metric-card .value{font-size:22px;font-weight:500;font-family:var(--font-mono);line-height:1}
-.metric-card .sub{font-size:10px;color:var(--dim);margin-top:3px;font-family:var(--font-mono)}
+.metric-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:8px}
+@media(max-width:640px){.metric-strip{grid-template-columns:repeat(2,1fr)}}
+.mc{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:12px 14px;position:relative;overflow:hidden}
+.mc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.mc.eeg::before{background:var(--blue)}.mc.iei::before{background:var(--coral)}.mc.neg::before{background:var(--teal)}.mc.zone::before{background:var(--purple)}
+.mc .label{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
+.mc .value{font-size:22px;font-weight:500;font-family:var(--mono);line-height:1}
+.mc .sub{font-size:10px;color:var(--dim);margin-top:4px;font-family:var(--mono)}
+.statline{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:12px;display:flex;gap:6px 18px;flex-wrap:wrap}
+.statline b{color:var(--text);font-weight:400}
+.insight{background:rgba(155,127,244,.07);border:.5px solid rgba(155,127,244,.3);border-radius:var(--r);padding:10px 14px;margin-bottom:12px;font-size:13px;line-height:1.55}
 
-/* Main grid */
-.main-grid{display:grid;grid-template-columns:228px 1fr;gap:12px;align-items:start}
-@media(max-width:768px){.main-grid{grid-template-columns:1fr}}
-
-/* Panel */
-.panel{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r-lg);padding:14px}
+.main{display:grid;grid-template-columns:262px 1fr;gap:12px;align-items:start}
+@media(max-width:820px){.main{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:.5px solid var(--border);border-radius:var(--rl);padding:14px}
 .panel+.panel{margin-top:10px}
-.panel-title{font-size:10px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin-bottom:12px}
-
-/* Sliders */
-.slider-group{margin-bottom:9px}
-.slider-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
-.slider-header .sname{font-size:11px;font-family:var(--font-mono);color:var(--muted)}
-.slider-header .sval{font-size:11px;font-family:var(--font-mono);font-weight:500;color:var(--text)}
+.ptitle{font-size:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin-bottom:11px;display:flex;justify-content:space-between;align-items:center}
+.ptitle button{background:none;border:.5px solid var(--border2);color:var(--muted);font-family:var(--mono);font-size:9px;border-radius:4px;padding:2px 6px;cursor:pointer}
+.ptitle button:hover{color:var(--text)}
+.sg{margin-bottom:9px}
+.sh{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.sname{font-size:11px;font-family:var(--mono);color:var(--muted)}
+.sval{font-size:11px;font-family:var(--mono);font-weight:500}
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:var(--surface2);outline:none;cursor:pointer;border:.5px solid var(--border)}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--text);cursor:pointer;border:2px solid var(--bg);transition:background .15s}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--text);cursor:pointer;border:2px solid var(--bg)}
 input[type=range]:hover::-webkit-slider-thumb{background:var(--teal)}
-.divider{border:none;border-top:.5px solid var(--border);margin:10px 0}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--text);cursor:pointer;border:2px solid var(--bg)}
+.warn{font-size:10px;font-family:var(--mono);color:var(--amber);margin-top:4px;display:none}
 
-/* Charts */
-.charts-col{display:flex;flex-direction:column;gap:10px}
-.chart-wrap{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r-lg);padding:14px}
-.chart-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap}
-.chart-title{font-size:12px;font-weight:500;color:var(--text)}
-.chart-sub{font-size:10px;font-family:var(--font-mono);color:var(--dim)}
-.legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px}
-.legend-item{display:flex;align-items:center;gap:5px;font-size:10px;font-family:var(--font-mono);color:var(--muted)}
-.legend-line{width:16px;height:2px;border-radius:1px}
-.legend-dash{width:16px;height:2px;background:repeating-linear-gradient(90deg,var(--dim) 0,var(--dim) 4px,transparent 4px,transparent 8px)}
+.col{display:flex;flex-direction:column;gap:10px}
+.cw{background:var(--surface);border:.5px solid var(--border);border-radius:var(--rl);padding:14px}
+.ch{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap}
+.ct{font-size:12px;font-weight:500}
+.cs{font-size:10px;font-family:var(--mono);color:var(--dim)}
+.lg{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px}
+.li{display:flex;align-items:center;gap:5px;font-size:10px;font-family:var(--mono);color:var(--muted)}
+.ll{width:16px;height:2px;border-radius:1px}
 canvas{display:block}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:900px){.two{grid-template-columns:1fr}}
 
-/* Region override notice */
-.override-notice{font-size:10px;font-family:var(--font-mono);color:var(--amber);margin-top:4px;display:none}
-.override-notice.show{display:block}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;min-width:760px}
+th{font-weight:400;color:var(--dim);text-align:right;padding:6px 8px;border-bottom:.5px solid var(--border2);font-size:10px;text-transform:uppercase;letter-spacing:.05em}
+td{padding:7px 8px;text-align:right;border-bottom:.5px solid var(--border);color:var(--text)}
+th:first-child,td:first-child{text-align:left}
+tr.cur td{background:rgba(31,207,148,.06)}
+.pos{color:var(--teal)}.neg{color:var(--coral)}.amb{color:var(--amber)}
+.tnote{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5}
 
-/* Colours */
-.neg-pos{color:var(--teal)}.neg-neg{color:var(--coral)}
-.zone-a{color:var(--coral)}.zone-b{color:var(--amber)}.zone-c{color:var(--teal)}
+.src ul{list-style:none;font-size:11px;color:var(--muted);line-height:1.55}
+.src li{margin-bottom:6px;padding-left:12px;position:relative}
+.src li::before{content:'';position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:50%;background:var(--teal)}
+.src li.a::before{background:var(--amber)}
+.src a{color:var(--blue);text-decoration:none}
+.src a:hover{text-decoration:underline}
+.src b{color:var(--text);font-weight:500}
 </style>
 </head>
 <body>
 <div class="shell">
 
 <header>
-  <div class="header-left">
+  <div>
     <h1>NEG Matrix Dashboard</h1>
+    <p>Singh, Verma &amp; Kumar (2026) · Decision Sciences · DOI 10.1111/deci.70029 · regional inputs sourced to 2025 data</p>
   </div>
-  <span class="badge">Battery Lifecycle Management</span>
+  <div class="legend-chips"><span><i class="dot src"></i>sourced</span><span><i class="dot asm"></i>assumed</span></div>
 </header>
 
 <div class="eq-bar">
-  <span>EEG = g · ρ · β · d₂</span><span class="sep">|</span>
-  <span>IEI = l · ½ · βρ · [d₁²(b₁−βρ)/b₁ + (d₁−d₂)²(b₂−βρ)/b₂]</span><span class="sep">|</span>
-  <span>NEG = EEG − IEI</span>
+  <span><b>g</b> = EC₁ / a = pack × embodied × (1 − recycling credit) × price / a</span>
+  <span><b>l</b> = E × grid CI × price</span>
+  <span><b>EEG</b> = g·d₂·βρ</span>
+  <span><b>IEI</b> = l·½·βρ·[d₁²(b₁−βρ)/b₁ + (d₁−d₂)²(b₂−βρ)/b₂]</span>
+  <span><b>NEG</b> = EEG − IEI</span>
 </div>
 
-<!-- Region selector -->
-<div class="region-bar">
-  <button class="region-btn" data-region="custom" onclick="selectRegion('custom')">
-    <span class="flag">🌐</span>
-    <div class="rname">Custom</div>
-    <div class="rstatus">manual sliders</div>
-  </button>
-  <button class="region-btn" data-region="us" onclick="selectRegion('us')">
-    <span class="flag">🇺🇸</span>
-    <div class="rname">United States</div>
-    <div class="rstatus">moderate grid</div>
-  </button>
-  <button class="region-btn" data-region="eu" onclick="selectRegion('eu')">
-    <span class="flag">🇪🇺</span>
-    <div class="rname">Europe</div>
-    <div class="rstatus">cleanest grid</div>
-  </button>
-  <button class="region-btn" data-region="cn" onclick="selectRegion('cn')">
-    <span class="flag">🇨🇳</span>
-    <div class="rname">China</div>
-    <div class="rstatus">high capacity</div>
-  </button>
-  <button class="region-btn" data-region="in" onclick="selectRegion('in')">
-    <span class="flag">🇮🇳</span>
-    <div class="rname">India</div>
-    <div class="rstatus">coal-heavy grid</div>
-  </button>
+<div class="region-bar" id="region-bar"></div>
+
+<div class="calib" id="calib">
+  <div class="calib-grid">
+    <div class="ci"><div class="lab">Grid carbon intensity</div><div class="val" id="c-ci">—</div><div class="sub" id="c-ci-s">—</div></div>
+    <div class="ci"><div class="lab">Replacement-battery footprint</div><div class="val" id="c-emb">—</div><div class="sub" id="c-emb-s">—</div></div>
+    <div class="ci"><div class="lab">EEG factor g</div><div class="val" id="c-g" style="color:var(--blue)">—</div><div class="sub" id="c-g-s">—</div></div>
+    <div class="ci"><div class="lab">IEI factor l</div><div class="val" id="c-l" style="color:var(--coral)">—</div><div class="sub" id="c-l-s">—</div></div>
+  </div>
+  <div class="calib-note" id="c-note"></div>
 </div>
 
-<!-- Region context card -->
-<div class="region-context" id="region-context" style="display:none">
-  <div class="ctx-item">
-    <div class="ctx-label">Grid Carbon Intensity</div>
-    <div class="ctx-val" id="ctx-ci">—</div>
-    <div class="ctx-sub" id="ctx-ci-src">—</div>
-  </div>
-  <div class="ctx-item">
-    <div class="ctx-label">Recycling Maturity</div>
-    <div class="ctx-val" id="ctx-rec">—</div>
-    <div class="ctx-sub" id="ctx-rec-src">—</div>
-  </div>
-  <div class="ctx-item">
-    <div class="ctx-label">IEI factor (l) set to</div>
-    <div class="ctx-val" id="ctx-l">—</div>
-    <div class="ctx-sub">scaled from gCO₂/kWh</div>
-  </div>
-  <div class="ctx-item">
-    <div class="ctx-label">EEG factor (g) set to</div>
-    <div class="ctx-val" id="ctx-g">—</div>
-    <div class="ctx-sub">scaled from recycling score</div>
-  </div>
-</div>
-
-<!-- Metric strip -->
 <div class="metric-strip">
-  <div class="metric-card mc-eeg">
-    <div class="label">EEG</div>
-    <div class="value" id="m-eeg" style="color:var(--blue)">—</div>
-    <div class="sub">end-of-life env. gain</div>
-  </div>
-  <div class="metric-card mc-iei">
-    <div class="label">IEI</div>
-    <div class="value" id="m-iei" style="color:var(--coral)">—</div>
-    <div class="sub">in-life env. impact</div>
-  </div>
-  <div class="metric-card mc-neg">
-    <div class="label">NEG</div>
-    <div class="value" id="m-neg">—</div>
-    <div class="sub">net environmental gain</div>
-  </div>
-  <div class="metric-card mc-zone">
-    <div class="label">IEI Zone (Lemma 1)</div>
-    <div class="value" id="m-zone" style="font-size:16px">—</div>
-    <div class="sub" id="m-zone-sub">ρ̂ = —</div>
-  </div>
+  <div class="mc eeg"><div class="label">EEG</div><div class="value" id="m-eeg" style="color:var(--blue)">—</div><div class="sub" id="m-eeg-s">—</div></div>
+  <div class="mc iei"><div class="label">IEI</div><div class="value" id="m-iei" style="color:var(--coral)">—</div><div class="sub" id="m-iei-s">—</div></div>
+  <div class="mc neg"><div class="label">NEG</div><div class="value" id="m-neg">—</div><div class="sub" id="m-neg-s">—</div></div>
+  <div class="mc zone"><div class="label">IEI zone (Lemma 1)</div><div class="value" id="m-zone" style="font-size:18px">—</div><div class="sub" id="m-zone-s">—</div></div>
 </div>
+<div class="statline" id="statline"></div>
+<div class="insight" id="insight"></div>
 
-<!-- Main grid -->
-<div class="main-grid">
-
-  <!-- LEFT -->
+<div class="main">
   <div>
     <div class="panel">
-      <div class="panel-title">Sweep parameters</div>
-      <div class="slider-group">
-        <div class="slider-header"><span class="sname">ρ &nbsp;(BMS effort)</span><span class="sval" id="v-rho">1.00</span></div>
-        <input type="range" id="sl-rho" min="0.01" max="5" step="0.01" value="1">
-      </div>
-      <div class="slider-group">
-        <div class="slider-header"><span class="sname">β &nbsp;(effectiveness)</span><span class="sval" id="v-beta">1.00</span></div>
-        <input type="range" id="sl-beta" min="0.1" max="5" step="0.05" value="1">
-      </div>
+      <div class="ptitle"><span>Sweep</span></div>
+      <div id="g-sweep"></div>
     </div>
-
     <div class="panel">
-      <div class="panel-title">Environmental parameters</div>
-      <div class="slider-group">
-        <div class="slider-header"><span class="sname">g &nbsp;(EEG factor)</span><span class="sval" id="v-g">1000</span></div>
-        <input type="range" id="sl-g" min="100" max="3000" step="50" value="1000">
-        <div class="override-notice" id="note-g">↑ region preset applied</div>
-      </div>
-      <div class="slider-group">
-        <div class="slider-header"><span class="sname">l &nbsp;(IEI factor)</span><span class="sval" id="v-l">500</span></div>
-        <input type="range" id="sl-l" min="50" max="2000" step="50" value="500">
-        <div class="override-notice" id="note-l">↑ region preset applied</div>
-      </div>
-
-      <hr class="divider">
-      <div class="panel-title" style="margin-top:0">Battery dynamics</div>
-      <div class="slider-group">
-        <div class="slider-header"><span class="sname">d₁ &nbsp;(1st-life BDL)</span><span class="sval" id="v-d1">0.20</span></div>
-        <input type="range" id="sl-d1" min="0.05" max="0.35" step="0.01" value="0.2">
-      </div>
-      <div class="slider-group">
-        <div class="slider-header"><span class="sname">d₂ &nbsp;(2nd-life BDL)</span><span class="sval" id="v-d2">0.70</span></div>
-        <input type="range" id="sl-d2" min="0.4" max="0.8" step="0.01" value="0.7">
-      </div>
-      <div class="slider-group">
-        <div class="slider-header"><span class="sname">b₁ &nbsp;(1st-life detn.)</span><span class="sval" id="v-b1">8.0</span></div>
-        <input type="range" id="sl-b1" min="2" max="20" step="0.5" value="8">
-      </div>
-      <div class="slider-group">
-        <div class="slider-header"><span class="sname">b₂ &nbsp;(2nd-life detn.)</span><span class="sval" id="v-b2">4.0</span></div>
-        <input type="range" id="sl-b2" min="1" max="10" step="0.5" value="4">
-      </div>
+      <div class="ptitle"><span>Region inputs</span><button id="reset-btn">reset</button></div>
+      <div id="g-region"></div>
+    </div>
+    <div class="panel">
+      <div class="ptitle"><span>Shared assumptions</span></div>
+      <div id="g-global"></div>
+      <div class="warn" id="w-d1">d₁ must stay below d₂/2 (paper footnote 3); adjusted.</div>
     </div>
   </div>
 
-  <!-- RIGHT -->
-  <div class="charts-col">
-
-    <div class="chart-wrap">
-      <div class="chart-header">
-        <span class="chart-title">NEG, EEG &amp; IEI vs ρ</span>
-        <span class="chart-sub">β fixed at slider · dashed line = ρ̂ (Zone A→B boundary)</span>
-      </div>
-      <div style="position:relative;height:210px">
-        <canvas id="chart-rho"></canvas>
-      </div>
-      <div class="legend">
-        <span class="legend-item"><span class="legend-line" style="background:var(--teal)"></span>NEG</span>
-        <span class="legend-item"><span class="legend-line" style="background:var(--blue)"></span>EEG</span>
-        <span class="legend-item"><span class="legend-line" style="background:var(--coral)"></span>IEI</span>
-        <span class="legend-item"><span class="legend-dash"></span>ρ̂</span>
+  <div class="col">
+    <div class="cw">
+      <div class="ch"><span class="ct" id="t-rho">NEG, EEG &amp; IEI vs ρ</span><span class="cs">x-axis ends at the technology cap (θ)</span></div>
+      <div style="position:relative;height:230px"><canvas id="chart-rho"></canvas></div>
+      <div class="lg">
+        <span class="li"><span class="ll" style="background:var(--teal)"></span>NEG</span>
+        <span class="li"><span class="ll" style="background:var(--blue)"></span>EEG</span>
+        <span class="li"><span class="ll" style="background:var(--coral)"></span>IEI</span>
+        <span class="li"><span class="ll" style="background:#fff"></span>current ρ</span>
+        <span class="li"><span class="ll" style="background:var(--amber)"></span>zone boundaries</span>
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-
-      <div class="chart-wrap">
-        <div class="chart-header">
-          <span class="chart-title">NEG, EEG &amp; IEI vs β</span>
-          <span class="chart-sub">ρ held at slider</span>
-        </div>
-        <div style="position:relative;height:170px">
-          <canvas id="chart-beta"></canvas>
-        </div>
-        <div class="legend">
-          <span class="legend-item"><span class="legend-line" style="background:var(--teal)"></span>NEG</span>
-          <span class="legend-item"><span class="legend-line" style="background:var(--purple)"></span>EEG</span>
-          <span class="legend-item"><span class="legend-line" style="background:var(--coral)"></span>IEI</span>
-        </div>
+    <div class="two">
+      <div class="cw">
+        <div class="ch"><span class="ct">NEG vs life extension — all regions</span><span class="cs">% added to battery age</span></div>
+        <div style="position:relative;height:210px"><canvas id="chart-ext"></canvas></div>
+        <div class="lg" id="ext-legend"></div>
       </div>
-
-      <div class="chart-wrap">
-        <div class="chart-header">
-          <span class="chart-title">ρ × β heatmap</span>
-          <span class="chart-sub">green=+NEG · red=−NEG · ✦ = current</span>
-        </div>
-        <div style="position:relative;height:170px">
-          <canvas id="chart-heat"></canvas>
-        </div>
-        <div class="legend">
-          <span class="legend-item">
-            <span style="display:inline-block;width:70px;height:7px;border-radius:2px;background:linear-gradient(to right,#f06b45,#1c2030,#1fcf94)"></span>
-            <span>−NEG → 0 → +NEG</span>
-          </span>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- Regional comparison bar chart -->
-    <div class="chart-wrap">
-      <div class="chart-header">
-        <span class="chart-title">Regional NEG comparison</span>
-        <span class="chart-sub">at current ρ &amp; β · using region-calibrated g &amp; l values</span>
-      </div>
-      <div style="position:relative;height:130px">
-        <canvas id="chart-regions"></canvas>
+      <div class="cw">
+        <div class="ch"><span class="ct">ρ × β heatmap</span><span class="cs">dark = beyond tech cap</span></div>
+        <div style="position:relative;height:210px"><canvas id="chart-heat"></canvas></div>
+        <div class="lg"><span class="li"><span style="display:inline-block;width:70px;height:7px;border-radius:2px;background:linear-gradient(to right,#f06b45,#1c2030,#1fcf94)"></span>−NEG → 0 → +NEG</span></div>
       </div>
     </div>
 
+    <div class="cw">
+      <div class="ch"><span class="ct">Regional comparison</span><span class="cs" id="tbl-sub">—</span></div>
+      <div class="tw"><table id="tbl"></table></div>
+      <div class="tnote" id="tnote"></div>
+    </div>
+
+    <div class="cw src">
+      <div class="ch"><span class="ct">Sources and assumptions</span></div>
+      <ul>
+        <li><b>Grid carbon intensity</b> (2025): Ember, <a href="https://ember-energy.org/latest-insights/global-electricity-review-2026/major-countries-and-regions/" target="_blank" rel="noopener">Global Electricity Review 2026</a>. China 525, US 384, EU 210, India 670, world 458 gCO₂e/kWh.</li>
+        <li><b>Cell/battery production footprint</b>: <a href="https://www.batterydesign.net/carbon-footprint-vs-cell-chemistry/" target="_blank" rel="noopener">secondary summary</a> of regional LCA estimates (EU 57–69, US 67, China 87–96 kgCO₂e/kWh); Peiseler et al. 2024, <i>Nat. Commun.</i> 15:10301 gives global NMC811 median 74. <a href="https://www.eco-business.com/news/worlds-largest-ev-battery-makers-need-cleaner-grids-to-decarbonise-report" target="_blank" rel="noopener">Greenpeace</a> reports 99–136 for NMC cells in China and 52 (France) to 126.5 (Germany). Check the primary papers before citing.</li>
+        <li class="a"><b>India's embodied footprint</b> is an assumption: set equal to China-made cells because <a href="https://www.outlookbusiness.com/amp/story/planet/battery-manufacturing-emissions-a-concern-govt-urges-industry-for-rd-investment" target="_blank" rel="noopener">nearly all of India's Li-ion demand is imported</a>.</li>
+        <li><b>Degradation</b>: <a href="https://www.geotab.com/blog/ev-battery-health/" target="_blank" rel="noopener">Geotab 2025</a>, 22,700 EVs: 2.3%/yr average; hot climates +0.4%/yr. India uses 2.7%, which assumes a hot-climate fleet.</li>
+        <li><b>Carbon price</b>: EPA 2023 social cost of carbon, $190/tCO₂ (2020 USD, 2% discount rate), per <a href="https://www.rff.org/publications/reports/adopting-the-social-cost-of-carbon-for-state-benefit-cost-analysis-a-primer-for-practitioners/" target="_blank" rel="noopener">RFF</a>. Contested and adjustable. It scales dollar values only; the sign of NEG, the zones and g/l do not depend on it.</li>
+        <li><b>Recycling credit</b> defaults to 0%. Literature spans 13–17% (ICCT) to 39% (Stegemann &amp; Gutsch review), and I found no consistent regional recovery-rate data to hardcode a per-region credit.</li>
+        <li><b>From the paper</b>: d₁ = 0.20, d₂ = 0.70 (BDL at second-life and end-of-life transitions); BMS life extension of 15–60% in the literature, up to ~40% per the Lithion Power cofounder, hence θ = 40%.</li>
+        <li class="a"><b>Assumed</b>: 60 kWh pack; 3,000 kWh/yr charging energy per battery; second-life degradation rate 2.5× first-life (b₂ = 0.4·b₁; the paper only requires b₂ &lt; b₁). The paper's Appendix B.5 parameter table was not in the PDF I have.</li>
+      </ul>
+    </div>
   </div>
 </div>
 </div>
 
 <script>
-/* ── Region presets ─────────────────────────────────────────────────────────
-   l (IEI factor): linearly scaled from grid carbon intensity (gCO2/kWh).
-     Source: Ember Global Electricity Review 2025, IEA 2024.
-     Scale: CI_gco2 / 473 (global avg) * 500 (dashboard midpoint)
-   g (EEG factor): inversely scaled from recycling maturity score (1-10).
-     High g = poor recycling = more environmental cost avoided per year.
-     China: best recycling → lower g. India: nascent → highest g.
-     Sources: IEA Global EV Outlook 2024, Ember 2025.
-   ─────────────────────────────────────────────────────────────────────────*/
-var REGIONS = {
-  us: {
-    name:'United States', flag:'🇺🇸',
-    ci: 384,   // Ember 2025: 384 gCO2/kWh
-    l: 406,    // 384/473 * 500
-    recycling_score: 5,  // ~17% salvage rate (ResearchAndMarkets 2024), growing
-    g: 1200,   // moderate-high: nascent but growing recycling infra
-    ci_src:'384 gCO₂/kWh · Ember 2025',
-    rec_src:'~17% salvage rate · nascent but growing',
-    rec_label:'Developing (5/10)'
-  },
-  eu: {
-    name:'Europe (EU)', flag:'🇪🇺',
-    ci: 213,   // Ember 2025: 213 gCO2/kWh
-    l: 225,    // 213/473 * 500
-    recycling_score: 8,  // EU Battery Regulation, 21% salvage rate, strict mandates
-    g: 650,    // lower g: cleaner recycling, strong regulation
-    ci_src:'213 gCO₂/kWh · Ember 2025',
-    rec_src:'~21% salvage rate · EU Battery Regulation',
-    rec_label:'Advanced (8/10)'
-  },
-  cn: {
-    name:'China', flag:'🇨🇳',
-    ci: 560,   // Ember 2025: 560 gCO2/kWh
-    l: 592,    // 560/473 * 500
-    recycling_score: 9,  // 65% global recycling market share, policy-mandated
-    g: 550,    // low g: excellent recycling infra means less gain from delay
-    ci_src:'560 gCO₂/kWh · Ember 2025',
-    rec_src:'~65% of global recycling capacity · IEA 2024',
-    rec_label:'Leading (9/10)'
-  },
-  in: {
-    name:'India', flag:'🇮🇳',
-    ci: 708,   // Ember 2025: 708 gCO2/kWh
-    l: 748,    // 708/473 * 500
-    recycling_score: 2,  // nascent, no large-scale infra, cited in paper itself
-    g: 1850,   // highest g: poor disposal = high environmental cost of replacement
-    ci_src:'708 gCO₂/kWh · Ember 2025',
-    rec_src:'Nascent — cited directly in Singh et al. (2026)',
-    rec_label:'Nascent (2/10)'
-  },
-  custom: {
-    name:'Custom', flag:'🌐',
-    ci: null, l: null, g: null,
-    ci_src:'—', rec_src:'—', rec_label:'—'
-  }
+/* ======================= MATH (pure) ======================= */
+function derive(R, G){
+  var pk = G.price/1000;
+  var b1 = 1/R.deg, b2 = G.b2r*b1, d1 = G.d1, d2 = G.d2;
+  var a  = b1*d1 + b2*(d2-d1);
+  var K0 = d1*d1 + (d1-d2)*(d1-d2);
+  var K1 = d1*d1/b1 + (d1-d2)*(d1-d2)/b2;
+  var EC1 = G.pack*R.emb*(1-G.credit)*pk;
+  var g = EC1/a;
+  var l = G.E*R.CI/1000*pk;
+  var xcap = G.theta*a/d2;
+  var xhat = K0/K1;
+  var A = g*d2 - l*K0/2;
+  var x0 = A >= 0 ? 0 : 2*(-A)/(l*K1);
+  return {b1:b1,b2:b2,a:a,K0:K0,K1:K1,EC1:EC1,g:g,l:l,xcap:xcap,xhat:xhat,A:A,x0:x0,
+          ratio:g/l,dip:K0/(2*d2),d1:d1,d2:d2};
+}
+function eegF(P,x){return P.g*P.d2*x}
+function ieiF(P,x){return P.l/2*(P.K0*x - P.K1*x*x)}
+function negF(P,x){return eegF(P,x)-ieiF(P,x)}
+function zoneF(P,x){return x<=P.xhat/2?'A':(x<=P.xhat?'B':'C')}
+function extF(P,x){return x*P.d2/P.a}
+/* ===================== END MATH ===================== */
+
+var PRESETS = {
+  global:{CI:458,emb:74,deg:0.023},
+  us:    {CI:384,emb:67,deg:0.023},
+  eu:    {CI:210,emb:63,deg:0.023},
+  cn:    {CI:525,emb:92,deg:0.023},
+  in:    {CI:670,emb:92,deg:0.027}
 };
+var META = {
+  global:{name:'Global ref.',flag:'🌐',sub:'world averages',color:'#8a90a8'},
+  us:{name:'United States',flag:'🇺🇸',sub:'gas-heavy grid',color:'#4f9cf9'},
+  eu:{name:'Europe (EU)',flag:'🇪🇺',sub:'cleanest grid',color:'#9b7ff4'},
+  cn:{name:'China',flag:'🇨🇳',sub:'coal + cell hub',color:'#f5a623'},
+  in:{name:'India',flag:'🇮🇳',sub:'coal-heavy, imports cells',color:'#f06b45'}
+};
+var NOTES = {
+  global:'World average grid (458 g/kWh, Ember 2025), global median NMC811 cell footprint (74 kg/kWh, Peiseler et al. 2024), Geotab average degradation (2.3%/yr). A neutral baseline for the sliders.',
+  us:'Grid 384 g/kWh (Ember 2025). Gas-heavy mix, but coal generation rose 13% in 2025. Cells 67 kg/kWh from regional LCA summaries.',
+  eu:'Grid 210 g/kWh (Ember 2025). Cells 63 kg/kWh is the midpoint of 57–69 from summaries; Greenpeace puts NMC cells anywhere from 52 (France) to 126.5 (Germany), so treat this as a low-to-mid estimate.',
+  cn:'Grid 525 g/kWh (Ember 2025, down 5%). Cells 92 kg/kWh is the midpoint of 87–96; Greenpeace reports 99–136 for NMC cells at the big three makers, so this may be low.',
+  in:'Grid 670 g/kWh (Ember 2025, down from 705). <b>Assumption:</b> replacement cells carry China-made footprint (92 kg/kWh) because India imports nearly all cells. Degradation 2.7%/yr = Geotab 2.3% + 0.4 hot-climate penalty, which <b>assumes a hot-climate fleet</b>.'
+};
+var KEYS = ['us','eu','cn','in'];
+var R = JSON.parse(JSON.stringify(PRESETS));
+var cur = 'in';
 
-var currentRegion = 'custom';
+var SLIDERS = {
+  sweep:[
+    {id:'rho',label:'ρ  BMS effort',min:0.01,max:10,step:0.01,val:2,dec:2,tag:'none',tip:'Firm R&D effort'},
+    {id:'beta',label:'β  effectiveness',min:0.1,max:5,step:0.05,val:2,dec:2,tag:'none',tip:'Effect of effort on deterioration rate'}
+  ],
+  region:[
+    {id:'CI',label:'Grid CI (gCO₂e/kWh)',min:50,max:900,step:5,val:670,dec:0,tag:'src',tip:'Ember 2026'},
+    {id:'emb',label:'Cell footprint (kg/kWh)',min:30,max:140,step:1,val:92,dec:0,tag:'src',tip:'Regional LCA summaries'},
+    {id:'deg',label:'Degradation (%/yr)',min:1,max:4,step:0.1,val:2.7,dec:1,tag:'src',tip:'Geotab 2025'}
+  ],
+  global:[
+    {id:'pack',label:'Pack size (kWh)',min:20,max:100,step:5,val:60,dec:0,tag:'asm',tip:'Assumed car-size pack'},
+    {id:'E',label:'Charging (kWh/yr)',min:1000,max:10000,step:250,val:3000,dec:0,tag:'asm',tip:'Assumed annual energy per battery; swap fleets run higher'},
+    {id:'price',label:'Carbon price ($/t)',min:50,max:400,step:10,val:190,dec:0,tag:'src',tip:'EPA 2023 SCC'},
+    {id:'credit',label:'Recycling credit (%)',min:0,max:40,step:1,val:0,dec:0,tag:'asm',tip:'Literature 13–39%'},
+    {id:'b2r',label:'b₂ / b₁',min:0.2,max:0.9,step:0.05,val:0.4,dec:2,tag:'asm',tip:'Second-life deterioration is 1/b₂'},
+    {id:'theta',label:'θ  tech cap (% life)',min:10,max:60,step:1,val:40,dec:0,tag:'src',tip:'Literature 15–60%'},
+    {id:'d1',label:'d₁ (1st-life BDL)',min:0.05,max:0.35,step:0.01,val:0.2,dec:2,tag:'src',tip:'Paper: 20–30%'},
+    {id:'d2',label:'d₂ (end-of-life BDL)',min:0.45,max:0.8,step:0.01,val:0.7,dec:2,tag:'src',tip:'Paper: 70%'}
+  ]
+};
+var ALL = SLIDERS.sweep.concat(SLIDERS.region).concat(SLIDERS.global);
 
-function selectRegion(key) {
-  currentRegion = key;
-  document.querySelectorAll('.region-btn').forEach(function(b){
-    b.classList.toggle('active', b.dataset.region === key);
+function fmt(v,d){return Number(v).toFixed(d)}
+function $(id){return document.getElementById(id)}
+function sliderHTML(d){
+  return '<div class="sg"><div class="sh"><span class="sname"><i class="dot '+d.tag+'"></i>'+d.label+'</span><span class="sval" id="v-'+d.id+'">'+fmt(d.val,d.dec)+'</span></div>'+
+         '<input type="range" id="sl-'+d.id+'" min="'+d.min+'" max="'+d.max+'" step="'+d.step+'" value="'+d.val+'" title="'+d.tip+'"></div>';
+}
+function val(id){return +$('sl-'+id).value}
+function setSl(id,v){var d=ALL.filter(function(x){return x.id===id})[0];$('sl-'+id).value=v;$('v-'+id).textContent=fmt(v,d.dec)}
+
+function readG(){
+  return {pack:val('pack'),E:val('E'),price:val('price'),credit:val('credit')/100,b2r:val('b2r'),
+          theta:val('theta')/100,d1:val('d1'),d2:val('d2')};
+}
+function money(v){var s=Math.abs(v)>=1000?Math.round(v).toLocaleString('en-US'):v.toFixed(1);return (v<0?'−$':'$')+s.replace('-','')}
+function moneySigned(v){return (v<0?'−':'')+'$'+(Math.abs(v)>=1000?Math.round(Math.abs(v)).toLocaleString('en-US'):Math.abs(v).toFixed(1))}
+
+/* ---------- region bar ---------- */
+function buildRegionBar(){
+  var h='';
+  ['global','us','eu','cn','in'].forEach(function(k){
+    var m=META[k];
+    h+='<button class="region-btn" data-r="'+k+'"><span class="flag">'+m.flag+'</span><div class="rname">'+m.name+'</div><div class="rsub">'+m.sub+'</div></button>';
   });
-  var ctx = document.getElementById('region-context');
-  if (key === 'custom') {
-    ctx.style.display = 'none';
-    document.getElementById('note-g').classList.remove('show');
-    document.getElementById('note-l').classList.remove('show');
-  } else {
-    var r = REGIONS[key];
-    ctx.style.display = 'grid';
-    document.getElementById('ctx-ci').textContent = r.ci + ' gCO₂/kWh';
-    document.getElementById('ctx-ci-src').textContent = r.ci_src;
-    document.getElementById('ctx-rec').textContent = r.rec_label;
-    document.getElementById('ctx-rec-src').textContent = r.rec_src;
-    document.getElementById('ctx-l').textContent = r.l;
-    document.getElementById('ctx-g').textContent = r.g;
-    // Push values to sliders
-    setSlider('g', r.g);
-    setSlider('l', r.l);
-    document.getElementById('note-g').classList.add('show');
-    document.getElementById('note-l').classList.add('show');
-  }
-  updateAll();
+  $('region-bar').innerHTML=h;
+  Array.prototype.forEach.call(document.querySelectorAll('.region-btn'),function(b){
+    b.addEventListener('click',function(){setRegion(b.getAttribute('data-r'))});
+  });
+}
+function setRegion(k){
+  cur=k;
+  Array.prototype.forEach.call(document.querySelectorAll('.region-btn'),function(b){
+    b.classList.toggle('active',b.getAttribute('data-r')===k);
+  });
+  setSl('CI',R[k].CI);setSl('emb',R[k].emb);setSl('deg',(R[k].deg*100));
+  recalc();
 }
 
-function setSlider(id, val) {
-  var el = document.getElementById('sl-' + id);
-  el.value = val;
-  document.getElementById('v-' + id).textContent = val;
-}
+/* ---------- charts ---------- */
+var vlinePlugin={id:'vlines',afterDatasetsDraw:function(chart){
+  var o=(chart.options.plugins&&chart.options.plugins.vlines)||{};var lines=o.lines||[];
+  var ctx=chart.ctx,xs=chart.scales.x,ys=chart.scales.y;
+  lines.forEach(function(L){
+    var px=xs.getPixelForValue(L.x);if(px<xs.left-1||px>xs.right+1)return;
+    ctx.save();ctx.strokeStyle=L.color;ctx.lineWidth=L.w||1;ctx.setLineDash(L.dash||[4,3]);
+    ctx.beginPath();ctx.moveTo(px,ys.top);ctx.lineTo(px,ys.bottom);ctx.stroke();ctx.setLineDash([]);
+    if(L.label){ctx.fillStyle=L.color;ctx.font='10px "JetBrains Mono",monospace';
+      var tw=ctx.measureText(L.label).width;var tx=px+4;if(tx+tw>xs.right)tx=px-tw-4;
+      ctx.fillText(L.label,tx,ys.top+12+(L.row||0)*12);}
+    ctx.restore();
+  });
+}};
+Chart.register(vlinePlugin);
 
-/* ── Math ── */
-function calcEEG(rho,beta,g,d2){return g*rho*beta*d2}
-function calcIEI(rho,beta,l,d1,d2,b1,b2){
-  var br=beta*rho;
-  return l*0.5*beta*rho*(d1*d1*(b1-br)/b1 + (d1-d2)*(d1-d2)*(b2-br)/b2);
-}
-function calcNEG(rho,beta,p){return calcEEG(rho,beta,p.g,p.d2)-calcIEI(rho,beta,p.l,p.d1,p.d2,p.b1,p.b2)}
-function calcRhoHat(p){
-  var num=p.b1*p.b2*(2*p.d1*p.d1-2*p.d1*p.d2+p.d2*p.d2);
-  var den=p.beta*(p.b1*(p.d1-p.d2)*(p.d1-p.d2)+p.b2*p.d1*p.d1);
-  return den>0?num/den:null;
-}
-function zoneOf(rho,rhoHat){
-  if(rhoHat==null)return{label:'N/A',cls:'',desc:''};
-  if(rho<=rhoHat/2)return{label:'Zone A',cls:'zone-a',desc:'IEI↑ with ρ'};
-  if(rho<=rhoHat)return{label:'Zone B',cls:'zone-b',desc:'IEI↓ with ρ, IEI>0'};
-  return{label:'Zone C',cls:'zone-c',desc:'IEI<0, IEI↓ with ρ'};
-}
-
-function getP(){
-  return{
-    rho:+document.getElementById('sl-rho').value,
-    beta:+document.getElementById('sl-beta').value,
-    g:+document.getElementById('sl-g').value,
-    l:+document.getElementById('sl-l').value,
-    d1:+document.getElementById('sl-d1').value,
-    d2:+document.getElementById('sl-d2').value,
-    b1:+document.getElementById('sl-b1').value,
-    b2:+document.getElementById('sl-b2').value
-  };
-}
-
-function linspace(a,b,n){
-  var arr=[],step=(b-a)/(n-1);
-  for(var i=0;i<n;i++)arr.push(+(a+step*i).toFixed(4));
-  return arr;
-}
-
-/* ── Heatmap colour ── */
-function negToColor(val,vmin,vmax){
-  if(val>=0){var t=Math.min(val/(vmax||1),1);return[Math.round(28+(31-28)*t),Math.round(32+(207-32)*t),Math.round(48+(148-48)*t)];}
-  var t2=Math.min(Math.abs(val)/(Math.abs(vmin)||1),1);
-  return[Math.round(28+(240-28)*t2),Math.round(32+(107-32)*t2),Math.round(48+(69-48)*t2)];
-}
-
-/* ── Chart instances ── */
-var rhoChart,betaChart,regionsChart;
-var N=80,HN=36;
-
-var CD = {
-  responsive:true,maintainAspectRatio:false,animation:{duration:100},
-  plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},
-  scales:{
-    x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#4a5068',font:{family:"'JetBrains Mono',monospace",size:9},maxTicksLimit:7}},
-    y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#4a5068',font:{family:"'JetBrains Mono',monospace",size:9},callback:function(v){return v.toFixed(0)}}}
-  }
-};
+var AX={color:'#555c75',font:{family:"'JetBrains Mono',monospace",size:9}};
+function zeroGrid(c){return c.tick&&c.tick.value===0?'rgba(255,255,255,.28)':'rgba(255,255,255,.04)'}
+var rhoChart,extChart;
 
 function initCharts(){
-  var p=getP();
-  var rhos=linspace(0.01,5,N),betas=linspace(0.1,5,N);
-
-  rhoChart=new Chart(document.getElementById('chart-rho'),{
+  rhoChart=new Chart($('chart-rho'),{
     type:'line',
-    data:{labels:rhos.map(function(v){return v.toFixed(2)}),datasets:[
-      {label:'NEG',data:rhos.map(function(r){return calcNEG(r,p.beta,p)}),borderColor:'#1fcf94',borderWidth:2,pointRadius:0,tension:0.35,backgroundColor:'rgba(31,207,148,0.06)',fill:true},
-      {label:'EEG',data:rhos.map(function(r){return calcEEG(r,p.beta,p.g,p.d2)}),borderColor:'#4f9cf9',borderWidth:1.5,pointRadius:0,tension:0.35,borderDash:[6,3]},
-      {label:'IEI',data:rhos.map(function(r){return calcIEI(r,p.beta,p.l,p.d1,p.d2,p.b1,p.b2)}),borderColor:'#f06b45',borderWidth:1.5,pointRadius:0,tension:0.35,borderDash:[3,3]}
+    data:{datasets:[
+      {label:'NEG',data:[],borderColor:'#1fcf94',borderWidth:2,pointRadius:0,tension:.25,backgroundColor:'rgba(31,207,148,.06)',fill:'origin'},
+      {label:'EEG',data:[],borderColor:'#4f9cf9',borderWidth:1.5,pointRadius:0,tension:.25,borderDash:[6,3]},
+      {label:'IEI',data:[],borderColor:'#f06b45',borderWidth:1.5,pointRadius:0,tension:.25,borderDash:[3,3]}
     ]},
-    options:Object.assign({},CD,{scales:Object.assign({},CD.scales,{
-      x:Object.assign({},CD.scales.x,{title:{display:true,text:'ρ (effort)',color:'#4a5068',font:{size:9,family:"'JetBrains Mono',monospace"}}}),
-      y:Object.assign({},CD.scales.y,{title:{display:true,text:'value',color:'#4a5068',font:{size:9,family:"'JetBrains Mono',monospace"}}})
-    })})
-  });
-
-  betaChart=new Chart(document.getElementById('chart-beta'),{
-    type:'line',
-    data:{labels:betas.map(function(v){return v.toFixed(2)}),datasets:[
-      {label:'NEG',data:betas.map(function(b){return calcNEG(p.rho,b,p)}),borderColor:'#1fcf94',borderWidth:2,pointRadius:0,tension:0.35,backgroundColor:'rgba(31,207,148,0.06)',fill:true},
-      {label:'EEG',data:betas.map(function(b){return calcEEG(p.rho,b,p.g,p.d2)}),borderColor:'#9b7ff4',borderWidth:1.5,pointRadius:0,tension:0.35,borderDash:[6,3]},
-      {label:'IEI',data:betas.map(function(b){return calcIEI(p.rho,b,p.l,p.d1,p.d2,p.b1,p.b2)}),borderColor:'#f06b45',borderWidth:1.5,pointRadius:0,tension:0.35,borderDash:[3,3]}
-    ]},
-    options:Object.assign({},CD,{scales:Object.assign({},CD.scales,{
-      x:Object.assign({},CD.scales.x,{title:{display:true,text:'β (effectiveness)',color:'#4a5068',font:{size:9,family:"'JetBrains Mono',monospace"}}})
-    })})
-  });
-
-  // Regional comparison bar chart
-  var regionKeys=['us','eu','cn','in'];
-  var regionLabels=regionKeys.map(function(k){return REGIONS[k].flag+' '+REGIONS[k].name});
-  var regionNEGs=regionKeys.map(function(k){
-    var rp=Object.assign({},p,{g:REGIONS[k].g,l:REGIONS[k].l});
-    return calcNEG(p.rho,p.beta,rp);
-  });
-  regionsChart=new Chart(document.getElementById('chart-regions'),{
-    type:'bar',
-    data:{
-      labels:regionLabels,
-      datasets:[
-        {label:'NEG',data:regionNEGs,backgroundColor:regionNEGs.map(function(v){return v>=0?'rgba(31,207,148,0.6)':'rgba(240,107,69,0.6)'}),borderColor:regionNEGs.map(function(v){return v>=0?'#1fcf94':'#f06b45'}),borderWidth:1,borderRadius:4}
-      ]
-    },
-    options:{
-      responsive:true,maintainAspectRatio:false,animation:{duration:150},
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return 'NEG: '+c.parsed.y.toFixed(1)}}}},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},vlines:{lines:[]},
+        tooltip:{callbacks:{title:function(i){return 'ρ = '+i[0].parsed.x.toFixed(2)},label:function(c){return c.dataset.label+': '+moneySigned(c.parsed.y)}}}},
       scales:{
-        x:{grid:{display:false},ticks:{color:'#7a8099',font:{family:"'JetBrains Mono',monospace",size:10}}},
-        y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#4a5068',font:{family:"'JetBrains Mono',monospace",size:9},callback:function(v){return v.toFixed(0)}}}
-      }
-    }
+        x:{type:'linear',min:0,grid:{color:'rgba(255,255,255,.04)'},ticks:AX,title:{display:true,text:'ρ (BMS effort)',color:'#555c75',font:AX.font}},
+        y:{grid:{color:zeroGrid},ticks:Object.assign({callback:function(v){return '$'+v}},AX),title:{display:true,text:'$ per battery',color:'#555c75',font:AX.font}}
+      }}
   });
-
-  drawHeatmap(p);
-  updateMetrics(p);
+  extChart=new Chart($('chart-ext'),{
+    type:'line',
+    data:{datasets:KEYS.map(function(k){return {label:META[k].name,data:[],borderColor:META[k].color,borderWidth:1.5,pointRadius:0,tension:.25}})},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      interaction:{mode:'nearest',intersect:false,axis:'x'},
+      plugins:{legend:{display:false},vlines:{lines:[]},
+        tooltip:{callbacks:{title:function(i){return '+'+i[0].parsed.x.toFixed(1)+'% battery life'},label:function(c){return c.dataset.label+': '+moneySigned(c.parsed.y)}}}},
+      scales:{
+        x:{type:'linear',min:0,grid:{color:'rgba(255,255,255,.04)'},ticks:AX,title:{display:true,text:'life extension (%)',color:'#555c75',font:AX.font}},
+        y:{grid:{color:zeroGrid},ticks:Object.assign({callback:function(v){return '$'+v}},AX),title:{display:true,text:'NEG ($)',color:'#555c75',font:AX.font}}
+      }}
+  });
+  var lg='';KEYS.forEach(function(k){lg+='<span class="li"><span class="ll" style="background:'+META[k].color+'"></span>'+META[k].name+'</span>'});
+  $('ext-legend').innerHTML=lg;
 }
 
-function drawHeatmap(p){
-  var canvas=document.getElementById('chart-heat');
-  var W=canvas.parentElement.clientWidth-28,H=170;
-  canvas.width=W;canvas.height=H;
-  var ctx=canvas.getContext('2d');
-  var rhos=linspace(0.01,5,HN),betas=linspace(0.1,5,HN);
-  var cw=W/HN,ch=H/HN;
-  var vals=[];
-  for(var bi=0;bi<HN;bi++)for(var ri=0;ri<HN;ri++)vals.push(calcNEG(rhos[ri],betas[bi],p));
-  var vmax=Math.max.apply(null,vals.filter(function(v){return v>=0}).concat([1]));
-  var vmin=Math.min.apply(null,vals.filter(function(v){return v<0}).concat([-1]));
-  for(var bi2=0;bi2<HN;bi2++){
-    for(var ri2=0;ri2<HN;ri2++){
-      var col=negToColor(calcNEG(rhos[ri2],betas[bi2],p),vmin,vmax);
-      ctx.fillStyle='rgb('+col[0]+','+col[1]+','+col[2]+')';
-      ctx.fillRect(ri2*cw,(HN-1-bi2)*ch,Math.ceil(cw)+1,Math.ceil(ch)+1);
-    }
+function drawHeat(P,rhoRaw,beta){
+  var c=$('chart-heat');var W=c.parentElement.clientWidth,H=c.parentElement.clientHeight;
+  c.width=W;c.height=H;var ctx=c.getContext('2d');
+  var padL=30,padB=20,padT=4,padR=4;var w=W-padL-padR,h=H-padT-padB;
+  var NX=44,NY=34,RMAX=10,BMIN=0.1,BMAX=5;
+  var vmax=1,vmin=-1,cells=[];
+  for(var j=0;j<NY;j++){for(var i=0;i<NX;i++){
+    var r=(i+.5)/NX*RMAX,b=BMIN+(j+.5)/NY*(BMAX-BMIN),x=r*b;
+    if(x>P.xcap){cells.push(null);continue}
+    var v=negF(P,x);cells.push(v);if(v>vmax)vmax=v;if(v<vmin)vmin=v;
+  }}
+  for(var j2=0;j2<NY;j2++){for(var i2=0;i2<NX;i2++){
+    var v2=cells[j2*NX+i2];var px=padL+i2/NX*w,py=padT+(NY-1-j2)/NY*h;
+    if(v2===null){ctx.fillStyle='#0b0d11'}
+    else if(v2>=0){var t=Math.min(v2/vmax,1);ctx.fillStyle='rgb('+Math.round(28+3*t)+','+Math.round(32+175*t)+','+Math.round(48+100*t)+')'}
+    else{var t2=Math.min(v2/vmin,1);ctx.fillStyle='rgb('+Math.round(28+212*t2)+','+Math.round(32+75*t2)+','+Math.round(48+21*t2)+')'}
+    ctx.fillRect(px,py,Math.ceil(w/NX)+1,Math.ceil(h/NY)+1);
+  }}
+  ctx.fillStyle='#555c75';ctx.font='9px "JetBrains Mono",monospace';
+  [0,5,10].forEach(function(t){ctx.fillText(t,padL+t/RMAX*w-(t===10?10:0),H-6)});
+  [1,3,5].forEach(function(t){ctx.fillText(t,6,padT+(1-(t-BMIN)/(BMAX-BMIN))*h+3)});
+  ctx.fillText('ρ →',W-26,H-6);
+  var rx=padL+Math.min(rhoRaw,RMAX)/RMAX*w,by=padT+(1-(beta-BMIN)/(BMAX-BMIN))*h;
+  ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=1;ctx.setLineDash([2,2]);
+  ctx.beginPath();ctx.moveTo(rx,padT);ctx.lineTo(rx,padT+h);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(padL,by);ctx.lineTo(padL+w,by);ctx.stroke();ctx.setLineDash([]);
+  ctx.beginPath();ctx.arc(rx,by,4,0,6.283);ctx.fillStyle='#fff';ctx.fill();
+}
+
+/* ---------- main recalculation ---------- */
+function recalc(){
+  var G=readG();
+  // keep d1 < d2/2
+  var warn=$('w-d1');
+  if(G.d1>=G.d2/2){var nd=Math.floor((G.d2/2-0.01)*100)/100;setSl('d1',nd);G.d1=nd;warn.style.display='block'}else{warn.style.display='none'}
+  R[cur].CI=val('CI');R[cur].emb=val('emb');R[cur].deg=val('deg')/100;
+  var rho=val('rho'),beta=val('beta');
+  var P=derive(R[cur],G);
+  var xRaw=rho*beta,capped=xRaw>P.xcap,x=Math.min(xRaw,P.xcap);
+  var pk=G.price/1000;
+
+  // calibration card
+  $('c-ci').textContent=fmt(R[cur].CI,0)+' g/kWh';
+  $('c-ci-s').textContent=META[cur].name+' · Ember 2025 data';
+  $('c-emb').textContent=fmt(R[cur].emb,0)+' kg/kWh';
+  $('c-emb-s').textContent='EC₁ = '+moneySigned(P.EC1)+' per '+G.pack+' kWh pack';
+  $('c-g').textContent=moneySigned(P.g)+'/yr';
+  $('c-g-s').textContent='EC₁ / a, a = '+fmt(P.a,1)+' yr unassisted life';
+  $('c-l').textContent=moneySigned(P.l)+'/yr';
+  $('c-l-s').textContent=G.E.toLocaleString('en-US')+' kWh × '+fmt(R[cur].CI/1000,3)+' kg × $'+fmt(pk,3)+'/kg';
+  $('c-note').innerHTML=NOTES[cur];
+
+  // metrics
+  var e=eegF(P,x),i=ieiF(P,x),n=e-i,z=zoneF(P,x);
+  $('m-eeg').textContent=moneySigned(e);$('m-eeg-s').textContent='≈ '+Math.round(e/pk)+' kgCO₂e avoided';
+  $('m-iei').textContent=moneySigned(i);$('m-iei-s').textContent='≈ '+Math.round(i/pk)+' kgCO₂e '+(i>=0?'added':'avoided');
+  var ne=$('m-neg');ne.textContent=moneySigned(n);ne.className='value '+(n>=0?'pos':'neg');
+  $('m-neg-s').textContent='≈ '+Math.round(n/pk)+' kgCO₂e net';
+  var zc={A:'neg',B:'amb',C:'pos'}[z];
+  var zv=$('m-zone');zv.textContent='Zone '+z;zv.className='value '+zc;
+  $('m-zone-s').textContent='ρ̂ = '+fmt(P.xhat/beta,2)+' at β = '+fmt(beta,2);
+  $('statline').innerHTML=
+    '<span>life +<b>'+fmt(x*P.d2,2)+' yr</b> (<b>+'+fmt(extF(P,x)*100,1)+'%</b>)</span>'+
+    '<span>ρ cap <b>'+fmt(P.xcap/beta,2)+'</b>'+(capped?' <span class="amb">(ρ×β exceeds θ; effort capped)</span>':'')+'</span>'+
+    '<span>g/l <b>'+fmt(P.ratio,3)+'</b> vs dip threshold <b>'+fmt(P.dip,3)+'</b></span>'+
+    '<span>b₁ <b>'+fmt(P.b1,1)+'</b> · b₂ <b>'+fmt(P.b2,1)+'</b></span>';
+
+  // insight
+  var nm=META[cur].name,ins;
+  if(P.x0===0){
+    ins='<b>'+nm+':</b> g/l = '+fmt(P.ratio,3)+' is above the dip threshold '+fmt(P.dip,3)+', so NEG rises from the first unit of BMS effort. EEG always outruns IEI here.';
+  }else{
+    var be=extF(P,P.x0)*100,th=G.theta*100;
+    ins='<b>'+nm+':</b> g/l = '+fmt(P.ratio,3)+' is below '+fmt(P.dip,3)+', so NEG <b>falls first</b> and only turns positive once BMS extends battery life by <b>'+fmt(be,1)+'%</b>. '+
+        (be>th?'That sits above the θ = '+fmt(th,0)+'% technology cap, so no feasible effort is net-positive.'
+               :'The θ = '+fmt(th,0)+'% cap clears it, but a BMS that delivers less than '+fmt(be,1)+'% leaves the environment worse off.');
   }
-  ctx.fillStyle='#4a5068';ctx.font='9px "JetBrains Mono",monospace';
-  ctx.fillText('ρ →',W-24,H-3);
-  ctx.save();ctx.translate(10,H/2);ctx.rotate(-Math.PI/2);ctx.fillText('β →',0,0);ctx.restore();
-  var rx=((p.rho-0.01)/(5-0.01))*W;
-  var by=H-((p.beta-0.1)/(5-0.1))*H;
-  ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=1;ctx.setLineDash([2,2]);
-  ctx.beginPath();ctx.moveTo(rx,0);ctx.lineTo(rx,H);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(0,by);ctx.lineTo(W,by);ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.beginPath();ctx.arc(rx,by,4,0,Math.PI*2);
-  ctx.fillStyle='#fff';ctx.fill();
-}
+  $('insight').innerHTML=ins;
 
-function updateAll(){
-  var p=getP();
-  var rhos=linspace(0.01,5,N),betas=linspace(0.1,5,N);
-  rhoChart.data.datasets[0].data=rhos.map(function(r){return calcNEG(r,p.beta,p)});
-  rhoChart.data.datasets[1].data=rhos.map(function(r){return calcEEG(r,p.beta,p.g,p.d2)});
-  rhoChart.data.datasets[2].data=rhos.map(function(r){return calcIEI(r,p.beta,p.l,p.d1,p.d2,p.b1,p.b2)});
+  // rho chart
+  var rcap=P.xcap/beta,N=90,d0=[],d1=[],d2=[];
+  for(var k=0;k<=N;k++){var r=rcap*k/N,xx=r*beta;
+    d0.push({x:r,y:negF(P,xx)});d1.push({x:r,y:eegF(P,xx)});d2.push({x:r,y:ieiF(P,xx)})}
+  rhoChart.data.datasets[0].data=d0;rhoChart.data.datasets[1].data=d1;rhoChart.data.datasets[2].data=d2;
+  rhoChart.options.scales.x.max=rcap;
+  var vl=[{x:Math.min(xRaw/beta,rcap),color:'#ffffff',dash:[],w:1.5}];
+  if(P.xhat/2/beta<rcap)vl.push({x:P.xhat/2/beta,color:'#f5a623',label:'ρ̂/2 · IEI peak',row:0});
+  if(P.xhat/beta<rcap)vl.push({x:P.xhat/beta,color:'#f5a623',label:'ρ̂ · IEI = 0',row:1});
+  rhoChart.options.plugins.vlines.lines=vl;
+  $('t-rho').textContent='NEG, EEG & IEI vs ρ — '+nm+' (β = '+fmt(beta,2)+')';
   rhoChart.update('none');
-  betaChart.data.datasets[0].data=betas.map(function(b){return calcNEG(p.rho,b,p)});
-  betaChart.data.datasets[1].data=betas.map(function(b){return calcEEG(p.rho,b,p.g,p.d2)});
-  betaChart.data.datasets[2].data=betas.map(function(b){return calcIEI(p.rho,b,p.l,p.d1,p.d2,p.b1,p.b2)});
-  betaChart.update('none');
-  // Update regional bars
-  var regionKeys=['us','eu','cn','in'];
-  var regionNEGs=regionKeys.map(function(k){
-    var rp=Object.assign({},p,{g:REGIONS[k].g,l:REGIONS[k].l});
-    return calcNEG(p.rho,p.beta,rp);
+
+  // extension chart (all regions)
+  var thp=G.theta*100;
+  KEYS.forEach(function(kk,idx){
+    var Pk=derive(R[kk],G),pts=[];
+    for(var q=0;q<=60;q++){var ef=G.theta*q/60,xk=ef*Pk.a/Pk.d2;pts.push({x:ef*100,y:negF(Pk,xk)})}
+    var ds=extChart.data.datasets[idx];ds.data=pts;ds.borderWidth=(kk===cur?3:1.4);
   });
-  regionsChart.data.datasets[0].data=regionNEGs;
-  regionsChart.data.datasets[0].backgroundColor=regionNEGs.map(function(v){return v>=0?'rgba(31,207,148,0.6)':'rgba(240,107,69,0.6)'});
-  regionsChart.data.datasets[0].borderColor=regionNEGs.map(function(v){return v>=0?'#1fcf94':'#f06b45'});
-  regionsChart.update('none');
-  drawHeatmap(p);
-  updateMetrics(p);
-}
+  extChart.options.scales.x.max=thp;
+  extChart.options.plugins.vlines.lines=[{x:extF(P,x)*100,color:'#ffffff',dash:[3,3]}];
+  extChart.update('none');
 
-function updateMetrics(p){
-  var eeg=calcEEG(p.rho,p.beta,p.g,p.d2);
-  var iei=calcIEI(p.rho,p.beta,p.l,p.d1,p.d2,p.b1,p.b2);
-  var neg=eeg-iei;
-  var rhoHat=calcRhoHat(p);
-  var z=zoneOf(p.rho,rhoHat);
-  document.getElementById('m-eeg').textContent=eeg.toFixed(1);
-  document.getElementById('m-iei').textContent=iei.toFixed(1);
-  var negEl=document.getElementById('m-neg');
-  negEl.textContent=neg.toFixed(1);
-  negEl.className='value '+(neg>=0?'neg-pos':'neg-neg');
-  var zEl=document.getElementById('m-zone');
-  zEl.textContent=z.label;zEl.className='value '+z.cls;
-  document.getElementById('m-zone-sub').textContent='ρ̂ = '+(rhoHat!=null?rhoHat.toFixed(3):'N/A');
-}
+  drawHeat(P,rho,beta);
 
-/* ── Slider binding ── */
-function bindSlider(id,decimals){
-  var el=document.getElementById('sl-'+id);
-  var out=document.getElementById('v-'+id);
-  el.addEventListener('input',function(){
-    out.textContent=parseFloat(el.value).toFixed(decimals);
-    if((id==='g'||id==='l')&&currentRegion!=='custom'){
-      currentRegion='custom';
-      document.querySelectorAll('.region-btn').forEach(function(b){b.classList.toggle('active',b.dataset.region==='custom')});
-      document.getElementById('region-context').style.display='none';
-      document.getElementById('note-g').classList.remove('show');
-      document.getElementById('note-l').classList.remove('show');
-    }
-    updateAll();
+  // table
+  var rows='<tr><th>Region</th><th>Grid CI</th><th>Cell kg/kWh</th><th>g $/yr</th><th>l $/yr</th><th>g/l</th><th>NEG now</th><th>Break-even ext.</th><th>NEG at cap</th></tr>';
+  KEYS.forEach(function(kk){
+    var Pk=derive(R[kk],G),xk=Math.min(xRaw,Pk.xcap),nn=negF(Pk,xk),nc=negF(Pk,Pk.xcap);
+    var be=Pk.x0===0?'<span class="pos">none (NEG &gt; 0 from start)</span>':(function(){var v=extF(Pk,Pk.x0)*100;return '<span class="'+(v>G.theta*100?'neg':'amb')+'">+'+fmt(v,1)+'%'+(v>G.theta*100?' (beyond θ)':'')+'</span>'})();
+    rows+='<tr'+(kk===cur?' class="cur"':'')+'><td>'+META[kk].flag+' '+META[kk].name+'</td><td>'+fmt(R[kk].CI,0)+'</td><td>'+fmt(R[kk].emb,0)+'</td>'+
+      '<td>'+fmt(Pk.g,1)+'</td><td>'+fmt(Pk.l,1)+'</td><td class="'+(Pk.ratio<Pk.dip?'neg':'pos')+'">'+fmt(Pk.ratio,3)+'</td>'+
+      '<td class="'+(nn>=0?'pos':'neg')+'">'+moneySigned(nn)+'</td><td>'+be+'</td><td class="'+(nc>=0?'pos':'neg')+'">'+moneySigned(nc)+'</td></tr>';
   });
+  $('tbl').innerHTML=rows;
+  $('tbl-sub').textContent='at ρ = '+fmt(rho,2)+', β = '+fmt(beta,2)+' (capped at θ = '+fmt(G.theta*100,0)+'%)';
+  $('tnote').innerHTML='g/l below <b>K₀/2d₂ = '+fmt(derive(R.us,G).dip,3)+'</b> (red) means NEG dips before it rises, the paper\'s U-shape. '+
+    'g/l = pack × cell kg/kWh ÷ (a × charging kWh × grid kg/kWh): the carbon price cancels, so this ranking does not depend on it. '+
+    'A dirtier grid raises l faster than it raises g, which is why India\'s ratio is the lowest here.';
 }
 
+/* ---------- boot ---------- */
 window.addEventListener('load',function(){
-  initCharts();
-  [['rho',2],['beta',2],['g',0],['l',0],['d1',2],['d2',2],['b1',1],['b2',1]].forEach(function(x){bindSlider(x[0],x[1])});
-  window.addEventListener('resize',function(){var p=getP();drawHeatmap(p)});
-  // Default: select Custom active state
-  document.querySelector('[data-region="custom"]').classList.add('active');
+  $('g-sweep').innerHTML=SLIDERS.sweep.map(sliderHTML).join('');
+  $('g-region').innerHTML=SLIDERS.region.map(sliderHTML).join('');
+  $('g-global').innerHTML=SLIDERS.global.map(sliderHTML).join('');
+  buildRegionBar();initCharts();
+  ALL.forEach(function(d){$('sl-'+d.id).addEventListener('input',function(){$('v-'+d.id).textContent=fmt(this.value,d.dec);recalc()})});
+  $('reset-btn').addEventListener('click',function(){R[cur]=JSON.parse(JSON.stringify(PRESETS[cur]));setRegion(cur)});
+  window.addEventListener('resize',recalc);
+  setRegion('in');
 });
 </script>
 </body>
