@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NEG Matrix Dashboard — Sourced regional calibration</title>
+<title>NEG Matrix Dashboard — Sourced regional calibration with sub-national drill-down</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -104,6 +104,31 @@ tr.cur td{background:rgba(31,207,148,.06)}
 .src a{color:var(--blue);text-decoration:none}
 .src a:hover{text-decoration:underline}
 .src b{color:var(--text);font-weight:500}
+
+.drill{background:var(--surface);border:.5px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:14px}
+.drill-top{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-bottom:10px}
+.drill select,.drill input[type=text],.drill textarea{background:var(--surface2);border:.5px solid var(--border2);color:var(--text);border-radius:6px;padding:6px 8px;font-family:var(--mono);font-size:11px}
+.drill select{min-width:200px}
+.drill textarea{width:100%;height:84px;resize:vertical;margin:6px 0}
+.chip{display:inline-block;font-family:var(--mono);font-size:10px;padding:2px 9px;border-radius:10px;border:.5px solid}
+.chip.pub{color:var(--teal);border-color:rgba(31,207,148,.45)}
+.chip.der{color:var(--amber);border-color:rgba(245,166,35,.55)}
+.dnote{font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:10px}
+.dnote b{color:var(--text);font-weight:500}
+.dsum{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:10px;display:flex;flex-wrap:wrap;gap:4px 18px}
+.dsum b{color:var(--text);font-weight:400}
+.dtw{max-height:380px;overflow:auto;border:.5px solid var(--border);border-radius:var(--r)}
+.dtw table{min-width:700px}
+.dtw th{position:sticky;top:0;background:var(--surface);cursor:pointer;user-select:none}
+.dtw tr.sel td{background:rgba(31,207,148,.09)}
+.dtw tbody tr{cursor:pointer}
+.dtw tbody tr:hover td{background:rgba(255,255,255,.035)}
+.bar{display:inline-block;height:5px;border-radius:3px;background:var(--blue);vertical-align:middle;margin-left:7px;opacity:.65}
+details.loader{margin-top:12px;font-size:12px;color:var(--muted);line-height:1.5}
+details.loader summary{cursor:pointer;color:var(--text)}
+.btn{background:var(--surface2);border:.5px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:11px;border-radius:6px;padding:5px 10px;cursor:pointer}
+.btn:hover{border-color:var(--teal)}
+#d-msg{font-family:var(--mono);font-size:11px;margin-top:6px}
 </style>
 </head>
 <body>
@@ -135,6 +160,27 @@ tr.cur td{background:rgba(31,207,148,.06)}
     <div class="ci"><div class="lab">IEI factor l</div><div class="val" id="c-l" style="color:var(--coral)">—</div><div class="sub" id="c-l-s">—</div></div>
   </div>
   <div class="calib-note" id="c-note"></div>
+</div>
+
+<div class="drill" id="drill" style="display:none">
+  <div class="drill-top">
+    <span class="ct" id="d-title">Drill-down</span>
+    <select id="d-sel"></select>
+    <span id="d-basis-wrap" style="display:none"><select id="d-basis"><option value="scaled">Scaled to Ember national basis</option><option value="raw">eGRID as published (direct CO₂e)</option></select></span>
+    <input type="text" id="d-filter" placeholder="filter by name…">
+    <span class="chip" id="d-chip"></span>
+  </div>
+  <div class="dnote" id="d-note"></div>
+  <div class="dsum" id="d-sum"></div>
+  <div class="dtw"><table id="d-tbl"></table></div>
+  <details class="loader" id="d-loader" style="display:none">
+    <summary>Replace the derived India values with Ember's own state data</summary>
+    <p>Download <a href="https://ember-energy.org/data/india-electricity-data" target="_blank" rel="noopener" style="color:var(--blue)">Ember's India yearly CSV</a> (it carries "carbon intensity of electricity generation" in gCO₂/kWh for 36 states and UTs) and load it here, or paste your own values. I could not read Ember's file (it blocks automated access), so this loader is <b>untested against the real file</b>: check the preview.</p>
+    <input type="file" id="d-file" accept=".csv,text/csv">
+    <textarea id="d-paste" placeholder="Or paste one state per line:&#10;Karnataka, 429&#10;Odisha, 528"></textarea>
+    <button class="btn" id="d-apply">Apply pasted values</button> <button class="btn" id="d-clear">Back to derived</button>
+    <div id="d-msg"></div>
+  </details>
 </div>
 
 <div class="metric-strip">
@@ -204,6 +250,10 @@ tr.cur td{background:rgba(31,207,148,.06)}
         <li><b>Degradation</b>: <a href="https://www.geotab.com/blog/ev-battery-health/" target="_blank" rel="noopener">Geotab 2025</a>, 22,700 EVs: 2.3%/yr average; hot climates +0.4%/yr. India uses 2.7%, which assumes a hot-climate fleet.</li>
         <li><b>Carbon price</b>: EPA 2023 social cost of carbon, $190/tCO₂ (2020 USD, 2% discount rate), per <a href="https://www.rff.org/publications/reports/adopting-the-social-cost-of-carbon-for-state-benefit-cost-analysis-a-primer-for-practitioners/" target="_blank" rel="noopener">RFF</a>. Contested and adjustable. It scales dollar values only; the sign of NEG, the zones and g/l do not depend on it.</li>
         <li><b>Recycling credit</b> defaults to 0%. Literature spans 13–17% (ICCT) to 39% (Stegemann &amp; Gutsch review), and I found no consistent regional recovery-rate data to hardcode a per-region credit.</li>
+        <li><b>US states</b>: EPA, <a href="https://www.epa.gov/system/files/documents/2025-06/summary_tables_rev2.pdf" target="_blank" rel="noopener">eGRID Summary Tables 2023 (rev. 2, Jun 2025)</a>, Table 3, CO₂e total output emission rate by state. 2023 data, generation-based, direct combustion only.</li>
+        <li><b>EU countries</b>: Ember carbon intensity per country (2025 or latest), as listed on <a href="https://projetcelsius.com/en/ai/maps/electricity-carbon-intensity/" target="_blank" rel="noopener">Projet Celsius</a> citing Ember's Global Electricity Review 2026 and <a href="https://ourworldindata.org/grapher/carbon-intensity-electricity" target="_blank" rel="noopener">Our World in Data</a> (download the CSV there to verify). Rankings cross-checked loosely against the <a href="https://www.eea.europa.eu/en/analysis/indicators/greenhouse-gas-emission-intensity-of-1" target="_blank" rel="noopener">EEA indicator</a> (direct emissions; its values are in an interactive chart I could not read).</li>
+        <li class="a"><b>India states</b> (derived): renewable share of procurement, FY2024, from Ember–IEEFA <a href="https://ember-energy.org/app/uploads/2026/02/Indian-States-Electricity-Transition-SET-2026.pdf" target="_blank" rel="noopener">Indian States' Electricity Transition 2026</a>. Authoritative per-state intensity: <a href="https://ember-energy.org/data/india-electricity-data" target="_blank" rel="noopener">Ember India Electricity Data</a> (CSV, 36 states/UTs, from 2019), which the loader can read.</li>
+        <li><b>Do not mix India factors</b>: Ember's 670 g/kWh (2025, lifecycle) and CEA's 727 g/kWh (cited in Ember's EV report from CEA's CO₂ Baseline Database v20) differ in year and method.</li>
         <li><b>From the paper</b>: d₁ = 0.20, d₂ = 0.70 (BDL at second-life and end-of-life transitions); BMS life extension of 15–60% in the literature, up to ~40% per the Lithion Power cofounder, hence θ = 40%.</li>
         <li class="a"><b>Assumed</b>: 60 kWh pack; 3,000 kWh/yr charging energy per battery; second-life degradation rate 2.5× first-life (b₂ = 0.4·b₁; the paper only requires b₂ &lt; b₁). The paper's Appendix B.5 parameter table was not in the PDF I have.</li>
       </ul>
@@ -258,6 +308,180 @@ var NOTES = {
   cn:'Grid 525 g/kWh (Ember 2025, down 5%). Cells 92 kg/kWh is the midpoint of 87–96; Greenpeace reports 99–136 for NMC cells at the big three makers, so this may be low.',
   in:'Grid 670 g/kWh (Ember 2025, down from 705). <b>Assumption:</b> replacement cells carry China-made footprint (92 kg/kWh) because India imports nearly all cells. Degradation 2.7%/yr = Geotab 2.3% + 0.4 hot-climate penalty, which <b>assumes a hot-climate fleet</b>.'
 };
+/* ============ SUB-NATIONAL DATA ============ */
+var LB2G=0.45359237;        // lb/MWh -> g/kWh
+var EGRID_US_LB=770.9;      // eGRID2023 U.S. total output emission rate, CO2e, lb/MWh (EPA summary tables, Table 3)
+var EMBER_US=384;           // Ember GER 2026, US, 2025
+var US_ST=[['AL','Alabama',714.0],['AK','Alaska',814.5],['AZ','Arizona',689.1],['AR','Arkansas',998.4],['CA','California',394.8],['CO','Colorado',1091.1],['CT','Connecticut',540.7],['DE','Delaware',704.2],['DC','District of Columbia',395.0],['FL','Florida',789.1],['GA','Georgia',717.4],['HI','Hawaii',1394.7],['ID','Idaho',313.9],['IL','Illinois',474.4],['IN','Indiana',1465.5],['IA','Iowa',634.2],['KS','Kansas',733.3],['KY','Kentucky',1747.0],['LA','Louisiana',763.1],['ME','Maine',316.8],['MD','Maryland',522.2],['MA','Massachusetts',830.1],['MI','Michigan',797.4],['MN','Minnesota',752.3],['MS','Mississippi',828.3],['MO','Missouri',1454.6],['MT','Montana',1063.9],['NE','Nebraska',1025.8],['NV','Nevada',643.9],['NH','New Hampshire',276.2],['NJ','New Jersey',470.2],['NM','New Mexico',773.6],['NY','New York',466.6],['NC','North Carolina',626.4],['ND','North Dakota',1297.9],['OH','Ohio',1068.3],['OK','Oklahoma',648.8],['OR','Oregon',365.0],['PA','Pennsylvania',647.9],['RI','Rhode Island',840.0],['SC','South Carolina',560.4],['SD','South Dakota',335.6],['TN','Tennessee',661.2],['TX','Texas',771.2],['UT','Utah',1421.2],['VT','Vermont',52.2],['VA','Virginia',539.6],['WA','Washington',266.6],['WV','West Virginia',1968.9],['WI','Wisconsin',1163.6],['WY','Wyoming',1833.3]];
+var EU_CT=[['AT','Austria',117],['BE','Belgium',150],['BG','Bulgaria',276],['HR','Croatia',159],['CY','Cyprus',489],['CZ','Czechia',402],['DK','Denmark',114],['EE','Estonia',319],['FI','Finland',58],['FR','France',41],['DE','Germany',330],['GR','Greece',315],['HU','Hungary',163],['IE','Ireland',257],['IT','Italy',285],['LV','Latvia',139],['LT','Lithuania',138],['LU','Luxembourg',123],['NL','Netherlands',254],['PL','Poland',589],['PT','Portugal',128],['RO','Romania',251],['SK','Slovakia',95],['SI','Slovenia',183],['ES','Spain',154],['SE','Sweden',35]];
+// Ember-IEEFA SET 2026: renewable share of power procurement, FY2024 (%). Punjab has no stated number.
+var IN_ST=[['Andhra Pradesh',22],['Assam',18],['Bihar',18],['Chhattisgarh',10],['Delhi',24],['Gujarat',14],['Haryana',26],['Himachal Pradesh',65],['Jharkhand',8],['Karnataka',37],['Kerala',21],['Madhya Pradesh',23],['Maharashtra',16],['Odisha',11],['Rajasthan',25],['Tamil Nadu',17],['Telangana',14],['Uttar Pradesh',19],['Uttarakhand',44],['West Bengal',7]];
+var IN_NAT=670, IN_RE_NAT=22;                 // Ember 2025 CI; SET 2026: ~22% of FY2025 generation is renewable
+var IN_FOSSIL=IN_NAT/(1-IN_RE_NAT/100);       // effective intensity of the non-renewable pool
+var usBasis='scaled', inLoaded=null, curSub=null, curSubName='', dSort={k:'ci',d:-1}, dFilter='';
+
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function reOf(name){for(var i=0;i<IN_ST.length;i++)if(IN_ST[i][0].toLowerCase()===String(name).toLowerCase())return IN_ST[i][1];return null}
+function subItems(){
+  var out=[];
+  if(cur==='us'){
+    var f=usBasis==='scaled'?EMBER_US/(EGRID_US_LB*LB2G):1;
+    US_ST.forEach(function(s){out.push({code:s[0],name:s[1],ci:Math.round(s[2]*LB2G*f),extra:s[2].toFixed(1)})});
+  }else if(cur==='eu'){
+    EU_CT.forEach(function(s){out.push({code:s[0],name:s[1],ci:s[2],extra:''})});
+  }else if(cur==='in'){
+    if(inLoaded){inLoaded.forEach(function(s){var r=reOf(s.name);out.push({code:s.name,name:s.name,ci:Math.round(s.v),extra:r!==null?r+'%':'—'})})}
+    else IN_ST.forEach(function(s){out.push({code:s[0],name:s[0],ci:Math.round(IN_FOSSIL*(1-s[1]/100)),extra:s[1]+'%'})});
+  }
+  return out;
+}
+function subMeta(){
+  if(cur==='us')return {title:'US states (51)',unit:'states + DC',xl:'eGRID lb/MWh',chip:'published · EPA eGRID2023',cls:'pub',
+    note:'<b>Source:</b> EPA eGRID2023 (released Jan 2025, rev. Jun 2025), Table 3 &ldquo;State Output Emission Rates&rdquo;, CO₂e total output, lb/MWh, converted at 0.4536 g/kWh per lb/MWh. <b>Caveats:</b> it is <b>generation-based</b> (plants inside the state; imports and exports are ignored, so Vermont and California look cleaner than the power their chargers draw, and exporters like West Virginia and Wyoming look dirtier) and <b>direct combustion only</b>. &ldquo;Scaled&rdquo; multiplies every state by 384 ÷ 349.7 so the US average matches the Ember lifecycle figure used on the national view; it is a crude uplift. Alaska and Hawaii are islanded grids.'};
+  if(cur==='eu')return {title:'EU member states (26 of 27)',unit:'countries',xl:'',chip:'published · Ember 2025 (via OWID)',cls:'pub',
+    note:'<b>Source:</b> Ember lifecycle carbon intensity, 2025 or latest year, as republished per country by Projet Celsius (CC BY 4.0) from Ember\'s Global Electricity Review 2026 and Our World in Data. I read it on that secondary page, and its US, China, India, EU and world values match the Ember figures I read directly. <b>Caveats:</b> the year per country is not shown (2025 for most, 2023–24 for others); <b>Malta is missing</b> from the source list; Ember counts lifecycle emissions, whereas the EEA counts direct combustion, so rankings differ at the margin (the EEA puts Luxembourg among the three lowest; Ember has it at 123).'};
+  if(inLoaded)return {title:'India states and UTs ('+inLoaded.length+')',unit:'states / UTs',xl:'RE share FY24',chip:'loaded · your Ember data',cls:'pub',
+    note:'<b>Source:</b> values you loaded, expected to be Ember&rsquo;s &ldquo;carbon intensity of electricity generation&rdquo; (gCO₂/kWh) by state. Generation-based: a state that imports most of its power is not captured.'};
+  return {title:'India states (20)',unit:'states',xl:'RE share FY24',chip:'derived estimate, not published data',cls:'der',
+    note:'<b>These are derived, not published.</b> I could not read a per-state gCO₂/kWh series: Ember&rsquo;s state dataset is a CSV that blocks automated access. Instead: CI = (670 ÷ (1 − 0.22)) × (1 − state renewable share of power procurement, FY2024). The shares come from Ember–IEEFA <i>Indian States&rsquo; Electricity Transition 2026</i> (20 states; Punjab has no stated number); 22% is India&rsquo;s FY2025 renewable share of generation from the same report. The formula treats every non-renewable MWh as equally dirty, so it misplaces gas- and nuclear-heavy systems, and Himachal comes out at ~300 although its in-state generation is almost all hydro. <b>Load Ember&rsquo;s CSV below to replace it.</b> No district-level grid factor exists: power is procured by states and DISCOMs, not districts.'};
+}
+function buildSubSelect(){
+  var sel=$('d-sel');if(!sel)return;
+  var items=subItems().slice().sort(function(a,b){return a.name<b.name?-1:1});
+  var h='<option value="">National preset</option>';
+  items.forEach(function(it){h+='<option value="'+esc(it.code)+'">'+esc(it.name)+' · '+it.ci+' g/kWh</option>'});
+  sel.innerHTML=h;sel.value=curSub||'';
+}
+function selectSub(code){
+  if(!code){curSub=null;curSubName='';setSl('CI',R[cur].CI)}
+  else{var it=subItems().filter(function(x){return x.code===code})[0];if(!it)return;curSub=code;curSubName=it.name;setSl('CI',it.ci)}
+  $('d-sel').value=code||'';recalc();
+}
+function renderDrill(G,xRaw){
+  var show=(cur==='us'||cur==='eu'||cur==='in');
+  $('drill').style.display=show?'block':'none';
+  if(!show)return;
+  var M=subMeta();
+  $('d-title').textContent=M.title;
+  var ch=$('d-chip');ch.textContent=M.chip;ch.className='chip '+M.cls;
+  $('d-note').innerHTML=M.note;
+  $('d-basis-wrap').style.display=(cur==='us')?'inline':'none';
+  $('d-loader').style.display=(cur==='in')?'block':'none';
+  var all=subItems().map(function(it){
+    var Pk=derive({CI:it.ci,emb:R[cur].emb,deg:R[cur].deg},G),xk=Math.min(xRaw,Pk.xcap);
+    return {it:it,P:Pk,neg:negF(Pk,xk),be:Pk.x0>0?extF(Pk,Pk.x0)*100:-1};
+  });
+  var lo=all[0],hi=all[0],dips=0,nlo=all[0],nhi=all[0],maxCI=1;
+  all.forEach(function(r){
+    if(r.P.ratio<lo.P.ratio)lo=r;if(r.P.ratio>hi.P.ratio)hi=r;if(r.P.ratio<r.P.dip)dips++;
+    if(r.neg<nlo.neg)nlo=r;if(r.neg>nhi.neg)nhi=r;if(r.it.ci>maxCI)maxCI=r.it.ci;
+  });
+  $('d-sum').innerHTML='<span><b>'+all.length+'</b> '+M.unit+'</span>'+
+    '<span>g/l from <b>'+fmt(lo.P.ratio,3)+'</b> ('+esc(lo.it.name)+') to <b>'+fmt(hi.P.ratio,3)+'</b> ('+esc(hi.it.name)+')</span>'+
+    '<span><b>'+dips+'</b> of '+all.length+' below the dip threshold '+fmt(all[0].P.dip,3)+'</span>'+
+    '<span>NEG now: <b>'+moneySigned(nlo.neg)+'</b> ('+esc(nlo.it.name)+') to <b>'+moneySigned(nhi.neg)+'</b> ('+esc(nhi.it.name)+')</span>';
+  var kf={name:function(r){return r.it.name},ci:function(r){return r.it.ci},l:function(r){return r.P.l},ratio:function(r){return r.P.ratio},neg:function(r){return r.neg},be:function(r){return r.be}}[dSort.k];
+  all.sort(function(a,b){var x=kf(a),y=kf(b);return (x<y?-1:(x>y?1:0))*dSort.d});
+  var q=dFilter.toLowerCase();
+  var th=function(k,l){return '<th data-k="'+k+'">'+l+(dSort.k===k?(dSort.d>0?' ▲':' ▼'):'')+'</th>'};
+  var rows='<thead><tr>'+th('name','Name')+(M.xl?'<th>'+M.xl+'</th>':'<th></th>')+th('ci','Grid CI g/kWh')+th('l','l $/yr')+th('ratio','g/l')+th('neg','NEG now')+th('be','Break-even ext.')+'</tr></thead><tbody>';
+  all.forEach(function(r){
+    if(q&&r.it.name.toLowerCase().indexOf(q)<0&&String(r.it.code).toLowerCase().indexOf(q)<0)return;
+    var be=r.be<0?'<span class="pos">none</span>':'<span class="'+(r.be>G.theta*100?'neg':'amb')+'">+'+fmt(r.be,1)+'%</span>';
+    rows+='<tr data-c="'+esc(r.it.code)+'"'+(curSub===r.it.code?' class="sel"':'')+'><td>'+esc(r.it.name)+'</td><td>'+r.it.extra+'</td>'+
+      '<td>'+r.it.ci+'<span class="bar" style="width:'+Math.round(r.it.ci/maxCI*50)+'px"></span></td><td>'+fmt(r.P.l,0)+'</td>'+
+      '<td class="'+(r.P.ratio<r.P.dip?'neg':'pos')+'">'+fmt(r.P.ratio,3)+'</td><td class="'+(r.neg>=0?'pos':'neg')+'">'+moneySigned(r.neg)+'</td><td>'+be+'</td></tr>';
+  });
+  $('d-tbl').innerHTML=rows+'</tbody>';
+}
+/* ---- India loader: pasted values and Ember CSV ---- */
+function parseCSV(t){
+  var rows=[],row=[],f='',q=false;
+  for(var i=0;i<t.length;i++){
+    var ch=t[i];
+    if(q){if(ch==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=ch}
+    else if(ch==='"')q=true;
+    else if(ch===','){row.push(f);f=''}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&t[i+1]==='\n')i++;row.push(f);f='';if(row.length>1||row[0]!=='')rows.push(row);row=[]}
+    else f+=ch;
+  }
+  if(f!==''||row.length){row.push(f);rows.push(row)}
+  return rows;
+}
+function parsePaste(text){
+  var out=[];
+  text.split(/[\n;]+/).forEach(function(line){
+    var m=line.match(/^\s*(.*?)\s*[,\t:]\s*([0-9]+(?:\.[0-9]+)?)\s*$/);
+    if(m&&m[1]){var v=parseFloat(m[2]);if(v>=0&&v<=2000)out.push({name:m[1],v:v})}
+  });
+  return out;
+}
+function loadEmberIndia(text){
+  var rows=parseCSV(text);if(rows.length<2)return {err:'file looks empty'};
+  var h=rows[0].map(function(x){return x.trim().toLowerCase()});
+  function idx(fn){for(var i=0;i<h.length;i++)if(fn(h[i]))return i;return -1}
+  var iS=idx(function(x){return x==='state'||x==='state name'});
+  if(iS<0)iS=idx(function(x){return x.indexOf('state')>=0&&x.indexOf('code')<0&&x.indexOf('type')<0});
+  var iY=idx(function(x){return x==='year'||x==='date'});
+  var iV=idx(function(x){return x==='value'});
+  var iU=idx(function(x){return x==='unit'||x==='units'});
+  if(iS<0||iV<0)return {err:'could not find state and value columns. Headers seen: '+rows[0].join(' | ')};
+  var best={},seen=0;
+  for(var i=1;i<rows.length;i++){
+    var r=rows[i];if(r.length<=Math.max(iS,iV))continue;
+    var txt=r.map(function(c,j){return j===iV?'':c}).join(' ').toLowerCase();
+    if(!/intensity/.test(txt)||/gdp|capita|person/.test(txt))continue;
+    var unit=iU>=0?String(r[iU]).toLowerCase():'';
+    if(unit&&!/gco2|g\/kwh|g per kwh|gram/.test(unit))continue;
+    var v=parseFloat(r[iV]);if(!isFinite(v)||v<0||v>3000)continue;
+    var y=iY>=0?parseInt(String(r[iY]).slice(0,4),10):0;if(!isFinite(y))y=0;
+    var name=String(r[iS]).trim();if(!name||/^india(\s+total)?$/i.test(name))continue;
+    seen++;
+    if(!best[name]||y>best[name].y)best[name]={y:y,v:v};
+  }
+  var list=Object.keys(best).map(function(n){return {name:n,v:best[n].v,y:best[n].y}});
+  if(list.length<5)return {err:'found '+list.length+' state rows matching "intensity" in gCO₂/kWh. Headers seen: '+rows[0].join(' | ')};
+  var ys=list.map(function(x){return x.y});
+  return {list:list,year:Math.max.apply(null,ys),n:list.length};
+}
+function applyIndia(list,label){
+  inLoaded=list.slice().sort(function(a,b){return a.name<b.name?-1:1});
+  curSub=null;curSubName='';buildSubSelect();recalc();
+  var vs=inLoaded.map(function(x){return x.v}),mn=Math.min.apply(null,vs),mx=Math.max.apply(null,vs);
+  var m=$('d-msg');m.style.color='var(--teal)';
+  m.textContent=label+': '+inLoaded.length+' states/UTs, range '+Math.round(mn)+' to '+Math.round(mx)+' g/kWh. Sanity check: hydro states should be lowest, Chhattisgarh/Jharkhand near the top.';
+}
+function initDrill(){
+  $('d-sel').addEventListener('change',function(){selectSub(this.value)});
+  $('d-filter').addEventListener('input',function(){dFilter=this.value;recalc()});
+  $('d-basis').addEventListener('change',function(){
+    usBasis=this.value;buildSubSelect();
+    if(curSub){var it=subItems().filter(function(x){return x.code===curSub})[0];if(it)setSl('CI',it.ci)}
+    recalc();
+  });
+  $('d-tbl').addEventListener('click',function(e){
+    var th=e.target.closest?e.target.closest('th'):null;
+    if(th&&th.getAttribute('data-k')){var k=th.getAttribute('data-k');dSort=(dSort.k===k)?{k:k,d:-dSort.d}:{k:k,d:(k==='name'?1:-1)};recalc();return}
+    var tr=e.target.closest?e.target.closest('tr'):null;
+    if(tr&&tr.getAttribute('data-c')!==null){selectSub(tr.getAttribute('data-c'))}
+  });
+  $('d-apply').addEventListener('click',function(){
+    var l=parsePaste($('d-paste').value),m=$('d-msg');
+    if(l.length<3){m.style.color='var(--coral)';m.textContent='Need at least 3 lines like "Karnataka, 429".';return}
+    applyIndia(l,'Pasted');
+  });
+  $('d-clear').addEventListener('click',function(){inLoaded=null;curSub=null;curSubName='';buildSubSelect();recalc();$('d-msg').textContent=''});
+  $('d-file').addEventListener('change',function(){
+    var f=this.files&&this.files[0];if(!f)return;
+    var rd=new FileReader();rd.onload=function(){
+      var r=loadEmberIndia(String(rd.result)),m=$('d-msg');
+      if(r.err){m.style.color='var(--coral)';m.textContent='Could not use this file: '+r.err;return}
+      applyIndia(r.list,'Ember CSV (latest year '+r.year+')');
+    };rd.readAsText(f);
+  });
+}
+/* ============ END SUB-NATIONAL ============ */
+
 var KEYS = ['us','eu','cn','in'];
 var R = JSON.parse(JSON.stringify(PRESETS));
 var cur = 'in';
@@ -268,7 +492,7 @@ var SLIDERS = {
     {id:'beta',label:'β  effectiveness',min:0.1,max:5,step:0.05,val:2,dec:2,tag:'none',tip:'Effect of effort on deterioration rate'}
   ],
   region:[
-    {id:'CI',label:'Grid CI (gCO₂e/kWh)',min:50,max:900,step:5,val:670,dec:0,tag:'src',tip:'Ember 2026'},
+    {id:'CI',label:'Grid CI (gCO₂e/kWh)',min:10,max:1100,step:1,val:670,dec:0,tag:'src',tip:'Ember 2026; sub-regions below'},
     {id:'emb',label:'Cell footprint (kg/kWh)',min:30,max:140,step:1,val:92,dec:0,tag:'src',tip:'Regional LCA summaries'},
     {id:'deg',label:'Degradation (%/yr)',min:1,max:4,step:0.1,val:2.7,dec:1,tag:'src',tip:'Geotab 2025'}
   ],
@@ -314,7 +538,7 @@ function buildRegionBar(){
   });
 }
 function setRegion(k){
-  cur=k;
+  cur=k;curSub=null;curSubName='';buildSubSelect();
   Array.prototype.forEach.call(document.querySelectorAll('.region-btn'),function(b){
     b.classList.toggle('active',b.getAttribute('data-r')===k);
   });
@@ -410,21 +634,23 @@ function recalc(){
   // keep d1 < d2/2
   var warn=$('w-d1');
   if(G.d1>=G.d2/2){var nd=Math.floor((G.d2/2-0.01)*100)/100;setSl('d1',nd);G.d1=nd;warn.style.display='block'}else{warn.style.display='none'}
-  R[cur].CI=val('CI');R[cur].emb=val('emb');R[cur].deg=val('deg')/100;
   var rho=val('rho'),beta=val('beta');
-  var P=derive(R[cur],G);
+  if(!curSub){R[cur].CI=val('CI')}
+  R[cur].emb=val('emb');R[cur].deg=val('deg')/100;
+  var Rcur={CI:val('CI'),emb:R[cur].emb,deg:R[cur].deg};
+  var P=derive(Rcur,G);
   var xRaw=rho*beta,capped=xRaw>P.xcap,x=Math.min(xRaw,P.xcap);
   var pk=G.price/1000;
 
   // calibration card
-  $('c-ci').textContent=fmt(R[cur].CI,0)+' g/kWh';
-  $('c-ci-s').textContent=META[cur].name+' · Ember 2025 data';
+  $('c-ci').textContent=fmt(Rcur.CI,0)+' g/kWh';
+  $('c-ci-s').textContent=curSub?(curSubName+', '+META[cur].name+' · sub-national, see drill-down'):(META[cur].name+' · Ember 2025 data');
   $('c-emb').textContent=fmt(R[cur].emb,0)+' kg/kWh';
   $('c-emb-s').textContent='EC₁ = '+moneySigned(P.EC1)+' per '+G.pack+' kWh pack';
   $('c-g').textContent=moneySigned(P.g)+'/yr';
   $('c-g-s').textContent='EC₁ / a, a = '+fmt(P.a,1)+' yr unassisted life';
   $('c-l').textContent=moneySigned(P.l)+'/yr';
-  $('c-l-s').textContent=G.E.toLocaleString('en-US')+' kWh × '+fmt(R[cur].CI/1000,3)+' kg × $'+fmt(pk,3)+'/kg';
+  $('c-l-s').textContent=G.E.toLocaleString('en-US')+' kWh × '+fmt(Rcur.CI/1000,3)+' kg × $'+fmt(pk,3)+'/kg';
   $('c-note').innerHTML=NOTES[cur];
 
   // metrics
@@ -443,7 +669,7 @@ function recalc(){
     '<span>b₁ <b>'+fmt(P.b1,1)+'</b> · b₂ <b>'+fmt(P.b2,1)+'</b></span>';
 
   // insight
-  var nm=META[cur].name,ins;
+  var nm=curSub?(curSubName+' ('+META[cur].name+')'):META[cur].name,ins;
   if(P.x0===0){
     ins='<b>'+nm+':</b> g/l = '+fmt(P.ratio,3)+' is above the dip threshold '+fmt(P.dip,3)+', so NEG rises from the first unit of BMS effort. EEG always outruns IEI here.';
   }else{
@@ -494,6 +720,7 @@ function recalc(){
   $('tnote').innerHTML='g/l below <b>K₀/2d₂ = '+fmt(derive(R.us,G).dip,3)+'</b> (red) means NEG dips before it rises, the paper\'s U-shape. '+
     'g/l = pack × cell kg/kWh ÷ (a × charging kWh × grid kg/kWh): the carbon price cancels, so this ranking does not depend on it. '+
     'A dirtier grid raises l faster than it raises g, which is why India\'s ratio is the lowest here.';
+  renderDrill(G,xRaw);
 }
 
 /* ---------- boot ---------- */
@@ -501,8 +728,8 @@ window.addEventListener('load',function(){
   $('g-sweep').innerHTML=SLIDERS.sweep.map(sliderHTML).join('');
   $('g-region').innerHTML=SLIDERS.region.map(sliderHTML).join('');
   $('g-global').innerHTML=SLIDERS.global.map(sliderHTML).join('');
-  buildRegionBar();initCharts();
-  ALL.forEach(function(d){$('sl-'+d.id).addEventListener('input',function(){$('v-'+d.id).textContent=fmt(this.value,d.dec);recalc()})});
+  buildRegionBar();initCharts();initDrill();
+  ALL.forEach(function(d){$('sl-'+d.id).addEventListener('input',function(){$('v-'+d.id).textContent=fmt(this.value,d.dec);if(d.id==='CI'){curSub=null;curSubName='';$('d-sel').value=''}recalc()})});
   $('reset-btn').addEventListener('click',function(){R[cur]=JSON.parse(JSON.stringify(PRESETS[cur]));setRegion(cur)});
   window.addEventListener('resize',recalc);
   setRegion('in');
