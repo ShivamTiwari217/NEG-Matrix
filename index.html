@@ -137,7 +137,7 @@ details.loader summary{cursor:pointer;color:var(--text)}
 <header>
   <div>
     <h1>NEG Matrix Dashboard</h1>
-    <p>Singh, Verma &amp; Kumar (2026) · Decision Sciences · Regional inputs sourced to 2025 data</p>
+    <p>Singh, Verma &amp; Kumar (2026) · Decision Sciences · Regional Inputs sourced to 2025 data</p>
   </div>
   <div class="legend-chips"><span><i class="dot src"></i>sourced</span><span><i class="dot asm"></i>assumed</span></div>
 </header>
@@ -174,11 +174,11 @@ details.loader summary{cursor:pointer;color:var(--text)}
   <div class="dsum" id="d-sum"></div>
   <div class="dtw"><table id="d-tbl"></table></div>
   <details class="loader" id="d-loader" style="display:none">
-    <summary>Replace the derived India values with Ember's own state data</summary>
-    <p>Download <a href="https://ember-energy.org/data/india-electricity-data" target="_blank" rel="noopener" style="color:var(--blue)">Ember's India yearly CSV</a> (it carries "carbon intensity of electricity generation" in gCO₂/kWh for 36 states and UTs) and load it here, or paste your own values. I could not read Ember's file (it blocks automated access), so this loader is <b>untested against the real file</b>: check the preview.</p>
+    <summary>Load a newer Ember India file, or paste your own values</summary>
+    <p>The panel already contains Ember's 2024 values from the yearly CSV you supplied. To refresh with a newer release, download <a href="https://ember-energy.org/data/india-electricity-data" target="_blank" rel="noopener" style="color:var(--blue)">Ember's India yearly CSV</a> and select it here (it stays in your browser). The loader was tested on the 2024 release.</p>
     <input type="file" id="d-file" accept=".csv,text/csv">
     <textarea id="d-paste" placeholder="Or paste one state per line:&#10;Karnataka, 429&#10;Odisha, 528"></textarea>
-    <button class="btn" id="d-apply">Apply pasted values</button> <button class="btn" id="d-clear">Back to derived</button>
+    <button class="btn" id="d-apply">Apply pasted values</button> <button class="btn" id="d-clear">Back to embedded 2024 data</button>
     <div id="d-msg"></div>
   </details>
 </div>
@@ -252,7 +252,7 @@ details.loader summary{cursor:pointer;color:var(--text)}
         <li><b>Recycling credit</b> defaults to 0%. Literature spans 13–17% (ICCT) to 39% (Stegemann &amp; Gutsch review), and I found no consistent regional recovery-rate data to hardcode a per-region credit.</li>
         <li><b>US states</b>: EPA, <a href="https://www.epa.gov/system/files/documents/2025-06/summary_tables_rev2.pdf" target="_blank" rel="noopener">eGRID Summary Tables 2023 (rev. 2, Jun 2025)</a>, Table 3, CO₂e total output emission rate by state. 2023 data, generation-based, direct combustion only.</li>
         <li><b>EU countries</b>: Ember carbon intensity per country (2025 or latest), as listed on <a href="https://projetcelsius.com/en/ai/maps/electricity-carbon-intensity/" target="_blank" rel="noopener">Projet Celsius</a> citing Ember's Global Electricity Review 2026 and <a href="https://ourworldindata.org/grapher/carbon-intensity-electricity" target="_blank" rel="noopener">Our World in Data</a> (download the CSV there to verify). Rankings cross-checked loosely against the <a href="https://www.eea.europa.eu/en/analysis/indicators/greenhouse-gas-emission-intensity-of-1" target="_blank" rel="noopener">EEA indicator</a> (direct emissions; its values are in an interactive chart I could not read).</li>
-        <li class="a"><b>India states</b> (derived): renewable share of procurement, FY2024, from Ember–IEEFA <a href="https://ember-energy.org/app/uploads/2026/02/Indian-States-Electricity-Transition-SET-2026.pdf" target="_blank" rel="noopener">Indian States' Electricity Transition 2026</a>. Authoritative per-state intensity: <a href="https://ember-energy.org/data/india-electricity-data" target="_blank" rel="noopener">Ember India Electricity Data</a> (CSV, 36 states/UTs, from 2019), which the loader can read.</li>
+        <li><b>India states</b>: Ember, <a href="https://ember-energy.org/data/india-electricity-data" target="_blank" rel="noopener">India Electricity Data</a>, yearly long-format CSV (file <i>india_yearly_full_release_long_format.csv</i>), variable &ldquo;CO2 intensity&rdquo; and &ldquo;Total Generation&rdquo;, 2024, 36 states/UTs; methodology PDF at <a href="https://files.ember-energy.org/public-downloads/ember_subnational_data_methodology.pdf" target="_blank" rel="noopener">files.ember-energy.org</a>. RE share of procurement (FY2024) from Ember–IEEFA <a href="https://ember-energy.org/app/uploads/2026/02/Indian-States-Electricity-Transition-SET-2026.pdf" target="_blank" rel="noopener">SET 2026</a>.</li>
         <li><b>Do not mix India factors</b>: Ember's 670 g/kWh (2025, lifecycle) and CEA's 727 g/kWh (cited in Ember's EV report from CEA's CO₂ Baseline Database v20) differ in year and method.</li>
         <li><b>From the paper</b>: d₁ = 0.20, d₂ = 0.70 (BDL at second-life and end-of-life transitions); BMS life extension of 15–60% in the literature, up to ~40% per the Lithion Power cofounder, hence θ = 40%.</li>
         <li class="a"><b>Assumed</b>: 60 kWh pack; 3,000 kWh/yr charging energy per battery; second-life degradation rate 2.5× first-life (b₂ = 0.4·b₁; the paper only requires b₂ &lt; b₁). The paper's Appendix B.5 parameter table was not in the PDF I have.</li>
@@ -314,24 +314,28 @@ var EGRID_US_LB=770.9;      // eGRID2023 U.S. total output emission rate, CO2e, 
 var EMBER_US=384;           // Ember GER 2026, US, 2025
 var US_ST=[['AL','Alabama',714.0],['AK','Alaska',814.5],['AZ','Arizona',689.1],['AR','Arkansas',998.4],['CA','California',394.8],['CO','Colorado',1091.1],['CT','Connecticut',540.7],['DE','Delaware',704.2],['DC','District of Columbia',395.0],['FL','Florida',789.1],['GA','Georgia',717.4],['HI','Hawaii',1394.7],['ID','Idaho',313.9],['IL','Illinois',474.4],['IN','Indiana',1465.5],['IA','Iowa',634.2],['KS','Kansas',733.3],['KY','Kentucky',1747.0],['LA','Louisiana',763.1],['ME','Maine',316.8],['MD','Maryland',522.2],['MA','Massachusetts',830.1],['MI','Michigan',797.4],['MN','Minnesota',752.3],['MS','Mississippi',828.3],['MO','Missouri',1454.6],['MT','Montana',1063.9],['NE','Nebraska',1025.8],['NV','Nevada',643.9],['NH','New Hampshire',276.2],['NJ','New Jersey',470.2],['NM','New Mexico',773.6],['NY','New York',466.6],['NC','North Carolina',626.4],['ND','North Dakota',1297.9],['OH','Ohio',1068.3],['OK','Oklahoma',648.8],['OR','Oregon',365.0],['PA','Pennsylvania',647.9],['RI','Rhode Island',840.0],['SC','South Carolina',560.4],['SD','South Dakota',335.6],['TN','Tennessee',661.2],['TX','Texas',771.2],['UT','Utah',1421.2],['VT','Vermont',52.2],['VA','Virginia',539.6],['WA','Washington',266.6],['WV','West Virginia',1968.9],['WI','Wisconsin',1163.6],['WY','Wyoming',1833.3]];
 var EU_CT=[['AT','Austria',117],['BE','Belgium',150],['BG','Bulgaria',276],['HR','Croatia',159],['CY','Cyprus',489],['CZ','Czechia',402],['DK','Denmark',114],['EE','Estonia',319],['FI','Finland',58],['FR','France',41],['DE','Germany',330],['GR','Greece',315],['HU','Hungary',163],['IE','Ireland',257],['IT','Italy',285],['LV','Latvia',139],['LT','Lithuania',138],['LU','Luxembourg',123],['NL','Netherlands',254],['PL','Poland',589],['PT','Portugal',128],['RO','Romania',251],['SK','Slovakia',95],['SI','Slovenia',183],['ES','Spain',154],['SE','Sweden',35]];
-// Ember-IEEFA SET 2026: renewable share of power procurement, FY2024 (%). Punjab has no stated number.
+// Contrast column only: renewable share of power PROCUREMENT, FY2024 (%), Ember-IEEFA SET 2026. Punjab has no stated number.
 var IN_ST=[['Andhra Pradesh',22],['Assam',18],['Bihar',18],['Chhattisgarh',10],['Delhi',24],['Gujarat',14],['Haryana',26],['Himachal Pradesh',65],['Jharkhand',8],['Karnataka',37],['Kerala',21],['Madhya Pradesh',23],['Maharashtra',16],['Odisha',11],['Rajasthan',25],['Tamil Nadu',17],['Telangana',14],['Uttar Pradesh',19],['Uttarakhand',44],['West Bengal',7]];
-var IN_NAT=670, IN_RE_NAT=22;                 // Ember 2025 CI; SET 2026: ~22% of FY2025 generation is renewable
-var IN_FOSSIL=IN_NAT/(1-IN_RE_NAT/100);       // effective intensity of the non-renewable pool
-var usBasis='scaled', inLoaded=null, curSub=null, curSubName='', dSort={k:'ci',d:-1}, dFilter='';
+var IN_NAT=670;   // Ember GER 2026, India 2025 (lifecycle CO2e)
+// Ember India Electricity Data, yearly long format: variable 'CO2 intensity' (gCO2/kWh, direct CO2, generation inside the state) and 'Total Generation' (GWh), 2024. CC BY 4.0.
+var IN_EMBER=[{"name":"Andaman and Nicobar","v":629.7,"gen":404},{"name":"Andhra Pradesh","v":654.8,"gen":90639},{"name":"Arunachal Pradesh","v":24.0,"gen":4297},{"name":"Assam","v":586.5,"gen":9629},{"name":"Bihar","v":815.1,"gen":60984},{"name":"Chandigarh","v":48.4,"gen":9},{"name":"Chhattisgarh","v":806.0,"gen":167859},{"name":"Dadra and Nagar Haveli and Daman and Diu","v":129.0,"gen":29},{"name":"Delhi","v":421.0,"gen":4983},{"name":"Goa","v":46.7,"gen":65},{"name":"Gujarat","v":492.1,"gen":153613},{"name":"Haryana","v":769.9,"gen":32457},{"name":"Himachal Pradesh","v":24.1,"gen":42842},{"name":"Jammu and Kashmir","v":24.0,"gen":15941},{"name":"Jharkhand","v":814.6,"gen":39252},{"name":"Karnataka","v":394.4,"gen":95775},{"name":"Kerala","v":28.9,"gen":9253},{"name":"Ladakh","v":24.0,"gen":415},{"name":"Lakshadweep","v":818.8,"gen":67},{"name":"Madhya Pradesh","v":729.9,"gen":165156},{"name":"Maharashtra","v":659.0,"gen":170997},{"name":"Manipur","v":24.3,"gen":639},{"name":"Meghalaya","v":24.0,"gen":1020},{"name":"Mizoram","v":25.2,"gen":341},{"name":"Nagaland","v":24.0,"gen":314},{"name":"Odisha","v":739.7,"gen":75821},{"name":"Puducherry","v":465.1,"gen":217},{"name":"Punjab","v":685.1,"gen":41114},{"name":"Rajasthan","v":438.0,"gen":127371},{"name":"Sikkim","v":24.0,"gen":1988},{"name":"Tamil Nadu","v":493.2,"gen":129682},{"name":"Telangana","v":679.9,"gen":69770},{"name":"Tripura","v":489.5,"gen":5226},{"name":"Uttar Pradesh","v":764.9,"gen":172205},{"name":"Uttarakhand","v":57.6,"gen":16893},{"name":"West Bengal","v":783.0,"gen":97154}];
+var IN_EMBER_NAT=621.1, IN_EMBER_YEAR=2024;
+var basisMode='scaled', inLoaded=null, inLoadedNat=null, curSub=null, curSubName='', dSort={k:'ci',d:-1}, dFilter='';
 
 function esc(t){return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function reOf(name){for(var i=0;i<IN_ST.length;i++)if(IN_ST[i][0].toLowerCase()===String(name).toLowerCase())return IN_ST[i][1];return null}
 function subItems(){
   var out=[];
   if(cur==='us'){
-    var f=usBasis==='scaled'?EMBER_US/(EGRID_US_LB*LB2G):1;
+    var f=basisMode==='scaled'?EMBER_US/(EGRID_US_LB*LB2G):1;
     US_ST.forEach(function(s){out.push({code:s[0],name:s[1],ci:Math.round(s[2]*LB2G*f),extra:s[2].toFixed(1)})});
   }else if(cur==='eu'){
     EU_CT.forEach(function(s){out.push({code:s[0],name:s[1],ci:s[2],extra:''})});
   }else if(cur==='in'){
-    if(inLoaded){inLoaded.forEach(function(s){var r=reOf(s.name);out.push({code:s.name,name:s.name,ci:Math.round(s.v),extra:r!==null?r+'%':'—'})})}
-    else IN_ST.forEach(function(s){out.push({code:s[0],name:s[0],ci:Math.round(IN_FOSSIL*(1-s[1]/100)),extra:s[1]+'%'})});
+    var base=inLoaded||IN_EMBER, nat=inLoaded?inLoadedNat:IN_EMBER_NAT;
+    var f=(basisMode==='scaled'&&nat)?IN_NAT/nat:1;
+    base.forEach(function(s){var r=reOf(s.name);var g=(s.gen!=null&&isFinite(s.gen))?(s.gen/1000).toFixed(s.gen>=10000?0:1)+' TWh':'—';
+      out.push({code:s.name,name:s.name,ci:Math.round(s.v*f),extra:g+(r!==null?' · RE '+r+'%':'')})});
   }
   return out;
 }
@@ -340,10 +344,9 @@ function subMeta(){
     note:'<b>Source:</b> EPA eGRID2023 (released Jan 2025, rev. Jun 2025), Table 3 &ldquo;State Output Emission Rates&rdquo;, CO₂e total output, lb/MWh, converted at 0.4536 g/kWh per lb/MWh. <b>Caveats:</b> it is <b>generation-based</b> (plants inside the state; imports and exports are ignored, so Vermont and California look cleaner than the power their chargers draw, and exporters like West Virginia and Wyoming look dirtier) and <b>direct combustion only</b>. &ldquo;Scaled&rdquo; multiplies every state by 384 ÷ 349.7 so the US average matches the Ember lifecycle figure used on the national view; it is a crude uplift. Alaska and Hawaii are islanded grids.'};
   if(cur==='eu')return {title:'EU member states (26 of 27)',unit:'countries',xl:'',chip:'published · Ember 2025 (via OWID)',cls:'pub',
     note:'<b>Source:</b> Ember lifecycle carbon intensity, 2025 or latest year, as republished per country by Projet Celsius (CC BY 4.0) from Ember\'s Global Electricity Review 2026 and Our World in Data. I read it on that secondary page, and its US, China, India, EU and world values match the Ember figures I read directly. <b>Caveats:</b> the year per country is not shown (2025 for most, 2023–24 for others); <b>Malta is missing</b> from the source list; Ember counts lifecycle emissions, whereas the EEA counts direct combustion, so rankings differ at the margin (the EEA puts Luxembourg among the three lowest; Ember has it at 123).'};
-  if(inLoaded)return {title:'India states and UTs ('+inLoaded.length+')',unit:'states / UTs',xl:'RE share FY24',chip:'loaded · your Ember data',cls:'pub',
-    note:'<b>Source:</b> values you loaded, expected to be Ember&rsquo;s &ldquo;carbon intensity of electricity generation&rdquo; (gCO₂/kWh) by state. Generation-based: a state that imports most of its power is not captured.'};
-  return {title:'India states (20)',unit:'states',xl:'RE share FY24',chip:'derived estimate, not published data',cls:'der',
-    note:'<b>These are derived, not published.</b> I could not read a per-state gCO₂/kWh series: Ember&rsquo;s state dataset is a CSV that blocks automated access. Instead: CI = (670 ÷ (1 − 0.22)) × (1 − state renewable share of power procurement, FY2024). The shares come from Ember–IEEFA <i>Indian States&rsquo; Electricity Transition 2026</i> (20 states; Punjab has no stated number); 22% is India&rsquo;s FY2025 renewable share of generation from the same report. The formula treats every non-renewable MWh as equally dirty, so it misplaces gas- and nuclear-heavy systems, and Himachal comes out at ~300 although its in-state generation is almost all hydro. <b>Load Ember&rsquo;s CSV below to replace it.</b> No district-level grid factor exists: power is procured by states and DISCOMs, not districts.'};
+  return {title:'India states and UTs ('+(inLoaded?inLoaded.length:IN_EMBER.length)+')',unit:'states / UTs',xl:'Gen · RE share (proc.)',
+    chip:inLoaded?'loaded · your Ember file':'published · Ember India data, 2024',cls:'pub',
+    note:'<b>Source:</b> Ember <i>India Electricity Data</i>, yearly long-format CSV, variable &ldquo;CO2 intensity&rdquo; (gCO₂/kWh), '+(inLoaded?'the file you loaded':'2024, as downloaded and supplied by you')+'; CC BY 4.0. Its own national row (&ldquo;India Total&rdquo;) is <b>'+fmt(inLoaded?(inLoadedNat||0):IN_EMBER_NAT,0)+' g/kWh of direct CO₂</b>, whereas the national preset (670) is Ember&rsquo;s lifecycle CO₂e for 2025, so &ldquo;scaled&rdquo; multiplies every state by 670 ÷ that national row (a crude uplift for method and year; switch to &ldquo;as published&rdquo; for raw values). <b>Caveats:</b> it is <b>generation-based</b>: plants inside the state, so import-heavy states (Kerala at ~30, Delhi, Punjab, Haryana, Goa, the small UTs) are dirtier at the charger than shown. Systems under 0.1% of national generation are noisy (Lakshadweep went 91 → 819 g/kWh in one year). The RE figure is the renewable share of each state&rsquo;s power <i>procurement</i>, FY2024 (Ember–IEEFA SET 2026), shown for contrast. No district-level grid factor exists: power is procured by states and DISCOMs.'};
 }
 function buildSubSelect(){
   var sel=$('d-sel');if(!sel)return;
@@ -365,7 +368,8 @@ function renderDrill(G,xRaw){
   $('d-title').textContent=M.title;
   var ch=$('d-chip');ch.textContent=M.chip;ch.className='chip '+M.cls;
   $('d-note').innerHTML=M.note;
-  $('d-basis-wrap').style.display=(cur==='us')?'inline':'none';
+  $('d-basis-wrap').style.display=(cur==='us'||cur==='in')?'inline':'none';
+  var bo=$('d-basis').options;bo[0].text=cur==='in'?'Scaled to Ember national basis (670 ÷ file total)':'Scaled to Ember national basis (384 ÷ 349.7)';bo[1].text=cur==='in'?'Ember state CSV as published (direct CO₂)':'eGRID as published (direct CO₂e)';
   $('d-loader').style.display=(cur==='in')?'block':'none';
   var all=subItems().map(function(it){
     var Pk=derive({CI:it.ci,emb:R[cur].emb,deg:R[cur].deg},G),xk=Math.min(xRaw,Pk.xcap);
@@ -426,7 +430,7 @@ function loadEmberIndia(text){
   var iV=idx(function(x){return x==='value'});
   var iU=idx(function(x){return x==='unit'||x==='units'});
   if(iS<0||iV<0)return {err:'could not find state and value columns. Headers seen: '+rows[0].join(' | ')};
-  var best={},seen=0;
+  var best={},seen=0,natBest=null;
   for(var i=1;i<rows.length;i++){
     var r=rows[i];if(r.length<=Math.max(iS,iV))continue;
     var txt=r.map(function(c,j){return j===iV?'':c}).join(' ').toLowerCase();
@@ -435,27 +439,37 @@ function loadEmberIndia(text){
     if(unit&&!/gco2|g\/kwh|g per kwh|gram/.test(unit))continue;
     var v=parseFloat(r[iV]);if(!isFinite(v)||v<0||v>3000)continue;
     var y=iY>=0?parseInt(String(r[iY]).slice(0,4),10):0;if(!isFinite(y))y=0;
-    var name=String(r[iS]).trim();if(!name||/^india(\s+total)?$/i.test(name))continue;
+    var name=String(r[iS]).trim();if(!name)continue;
+    if(/^india(\s+total)?$/i.test(name)){if(!natBest||y>natBest.y)natBest={y:y,v:v};continue}
+    if(/^others?$/i.test(name))continue;
     seen++;
     if(!best[name]||y>best[name].y)best[name]={y:y,v:v};
   }
-  var list=Object.keys(best).map(function(n){return {name:n,v:best[n].v,y:best[n].y}});
+  var genBy={};
+  for(var j=1;j<rows.length;j++){
+    var q=rows[j];if(q.length<=Math.max(iS,iV))continue;
+    if(!/total generation/.test(q.join(' ').toLowerCase()))continue;
+    var nm=String(q[iS]).trim();if(!best[nm])continue;
+    var yy=iY>=0?parseInt(String(q[iY]).slice(0,4),10):0;
+    if(yy===best[nm].y){var gv=parseFloat(q[iV]);if(isFinite(gv))genBy[nm]=gv}
+  }
+  var list=Object.keys(best).map(function(n){return {name:n,v:best[n].v,y:best[n].y,gen:genBy[n]}});
   if(list.length<5)return {err:'found '+list.length+' state rows matching "intensity" in gCO₂/kWh. Headers seen: '+rows[0].join(' | ')};
   var ys=list.map(function(x){return x.y});
-  return {list:list,year:Math.max.apply(null,ys),n:list.length};
+  return {list:list,year:Math.max.apply(null,ys),n:list.length,nat:natBest?natBest.v:null};
 }
-function applyIndia(list,label){
-  inLoaded=list.slice().sort(function(a,b){return a.name<b.name?-1:1});
+function applyIndia(list,label,nat){
+  inLoaded=list.slice().sort(function(a,b){return a.name<b.name?-1:1});inLoadedNat=nat||null;
   curSub=null;curSubName='';buildSubSelect();recalc();
   var vs=inLoaded.map(function(x){return x.v}),mn=Math.min.apply(null,vs),mx=Math.max.apply(null,vs);
   var m=$('d-msg');m.style.color='var(--teal)';
-  m.textContent=label+': '+inLoaded.length+' states/UTs, range '+Math.round(mn)+' to '+Math.round(mx)+' g/kWh. Sanity check: hydro states should be lowest, Chhattisgarh/Jharkhand near the top.';
+  m.textContent=label+': '+inLoaded.length+' states/UTs, range '+Math.round(mn)+' to '+Math.round(mx)+' g/kWh'+(nat?(', national row '+Math.round(nat)+'.'):'. No national row found, so "scaled" leaves values unchanged.')+' Sanity check: hydro states lowest, Chhattisgarh/Jharkhand/Bihar near the top.';
 }
 function initDrill(){
   $('d-sel').addEventListener('change',function(){selectSub(this.value)});
   $('d-filter').addEventListener('input',function(){dFilter=this.value;recalc()});
   $('d-basis').addEventListener('change',function(){
-    usBasis=this.value;buildSubSelect();
+    basisMode=this.value;buildSubSelect();
     if(curSub){var it=subItems().filter(function(x){return x.code===curSub})[0];if(it)setSl('CI',it.ci)}
     recalc();
   });
@@ -468,15 +482,15 @@ function initDrill(){
   $('d-apply').addEventListener('click',function(){
     var l=parsePaste($('d-paste').value),m=$('d-msg');
     if(l.length<3){m.style.color='var(--coral)';m.textContent='Need at least 3 lines like "Karnataka, 429".';return}
-    applyIndia(l,'Pasted');
+    applyIndia(l,'Pasted',null);
   });
-  $('d-clear').addEventListener('click',function(){inLoaded=null;curSub=null;curSubName='';buildSubSelect();recalc();$('d-msg').textContent=''});
+  $('d-clear').addEventListener('click',function(){inLoaded=null;inLoadedNat=null;curSub=null;curSubName='';buildSubSelect();recalc();$('d-msg').textContent=''});
   $('d-file').addEventListener('change',function(){
     var f=this.files&&this.files[0];if(!f)return;
     var rd=new FileReader();rd.onload=function(){
       var r=loadEmberIndia(String(rd.result)),m=$('d-msg');
       if(r.err){m.style.color='var(--coral)';m.textContent='Could not use this file: '+r.err;return}
-      applyIndia(r.list,'Ember CSV (latest year '+r.year+')');
+      applyIndia(r.list,'Ember CSV (latest year '+r.year+')',r.nat);
     };rd.readAsText(f);
   });
 }
